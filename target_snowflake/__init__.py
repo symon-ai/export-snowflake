@@ -8,6 +8,10 @@ import logging
 import os
 import sys
 import copy
+import boto3
+import time
+
+import multiprocessing
 
 from typing import Dict, List, Optional
 from joblib import Parallel, delayed, parallel_backend
@@ -40,6 +44,15 @@ DEFAULT_MAX_PARALLELISM = 16  # Don't use more than this number of threads by de
 # for symon error logging
 ERROR_START_MARKER = '[target_error_start]'
 ERROR_END_MARKER = '[target_error_end]'
+
+# single s3_client and db_sync object per process
+s3_client = None
+db_sync = None
+def initialize_s3_client_db_sync(config, o, file_format_type):
+    global s3_client
+    global db_sync
+    s3_client = boto3.client('s3')
+    db_sync = DbSync(config, o, None, file_format_type)
 
 def add_metadata_columns_to_schema(schema_message):
     """Metadata _sdc columns according to the stitch documentation at
@@ -75,18 +88,11 @@ def get_snowflake_statics(config):
     Returns:
         tuple of retrieved items: table_cache, file_format_type
     """
-    table_cache = []
-    if not ('disable_table_cache' in config and config['disable_table_cache']):
-        LOGGER.info('Getting catalog objects from table cache...')
-
-        db = DbSync(config)  # pylint: disable=invalid-name
-        table_cache = db.get_table_columns(
-            table_schemas=stream_utils.get_schema_names_from_config(config))
-
+    db = DbSync(config)
     # The file format is detected at DbSync init time
     file_format_type = db.file_format.file_format_type
-
-    return table_cache, file_format_type
+    
+    return file_format_type
 
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements,invalid-name
@@ -522,6 +528,105 @@ def flush_records(stream: str,
     db_sync.delete_from_stage(stream, s3_key)
 
 
+def transfer_data_in_parallel(s3_csv_lists, config, o, file_format_type):
+    parallel_transfer_start_time = time.time()
+    
+    # make the decision of how many processes to use later
+    pool = multiprocessing.Pool(4, initialize_s3_client_db_sync(config, o, file_format_type))
+    pool.map(download_file, s3_csv_lists)
+    pool.close()
+    pool.join()
+    
+    parallel_transfer_end_time = time.time()
+    stream = config["stream"]
+    LOGGER.info(f"Start time for transfering {stream} as {parallel_transfer_start_time} and end time as {parallel_transfer_end_time}")
+
+
+def download_file(job):
+    bucket, key, filename, stream = job
+
+    s3_client.download_file(bucket, key, filename)
+
+    # upload to snowflake
+    file_path = filename.replace("\\", "/")
+
+    s3_key = db_sync.put_to_stage(file_path, stream, temp_dir=None)
+
+    # remove from local after uploading to snowflake
+    os.remove(file_path)
+
+
+def export_to_snowflake(config, o, file_format_type): 
+    # retrieve the csv.gz lists and the schema file from the s3 bucket
+    s3_client = boto3.client('s3')
+
+    bucket = config["bucket"]
+    prefix = config["prefix"]
+    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+
+    s3_csv_lists = []
+    schema_file = None
+    for obj in response['Contents']:
+        if obj['Key'].endswith('.csv.gz'):
+            s3_csv_lists.append((bucket, obj['Key'], obj['Key'].split("/")[-1], config["stream"]))
+        # for both python and spark parquet_to_csv steps, we always have a schema.json with the schema details
+        if obj['Key'].endswith('.json'):
+            schema_file = obj['Key']
+
+    if schema_file is None:
+        raise Exception("Schema file not found in the s3 bucket")
+    if len(s3_csv_lists) == 0:
+        raise Exception("No csv files found in the s3 bucket")
+
+    local_schema_file = 'local_schema.json'
+    s3_client.download_file(bucket, schema_file, local_schema_file)
+
+    f = open(local_schema_file)
+    schema = json.load(f)
+
+    # generate the schema object for DbSync
+    stream = config["stream"]
+    o = {
+        "stream": stream,
+        "schema": {"properties": schema['properties']},
+        "key_properties": config["key_columns"]
+    }
+
+    # check if the schema(Snowflake table) exists and create it if not
+    # sync_table will check the schema with the table in Snowflake, if there's a miss matching in columns, raise an error
+    db_sync = DbSync(config, o, None, file_format_type)
+    db_sync.create_schema_if_not_exists()
+    db_sync.sync_table()
+
+    # the csv files in s3 are compressed, changde the parquet_to_csv to write into gzip format, also remove the headers
+    transfer_data_in_parallel(s3_csv_lists, config, o, file_format_type)
+
+    # Snowflake locks the table when we run query against it, so we need to load the file sequentially
+    try: 
+        start_time = time.time()
+        for obj in s3_csv_lists:
+            stage_file_path = obj[2].replace("\\", "/")
+            LOGGER.info("------stage_file_path------")
+            LOGGER.info(stage_file_path)
+            
+            db_sync.load_file(stage_file_path)
+        end_time = time.time()
+        LOGGER.info(f"Time taken to load the files for {stream}: {end_time - start_time}")
+    except Exception as e:
+        LOGGER.info("Error occurred while loading the file: ", e)
+        # errors are already handled inside the load_file function, just raise here
+        raise e
+    finally:
+        # delete the remote file anyway
+        # Snowflake will charge for the memory usage if we don't delete the file
+        for obj in s3_csv_lists: 
+            stage_file_path = obj[2].replace("\\", "/")
+            db_sync.delete_from_stage(stream, stage_file_path)
+        
+        # local csv.gz files are removed after uploading to snowflake
+        os.remove(local_schema_file)
+        LOGGER.info("Deleted all files from the stage and local")
+
 def main():
     """Main function"""
     try:
@@ -529,6 +634,9 @@ def main():
         arg_parser = argparse.ArgumentParser()
         arg_parser.add_argument('-c', '--config', help='Config file')
         args = arg_parser.parse_args()
+        
+        LOGGER.info("------number of cpu---------")
+        LOGGER.info(multiprocessing.cpu_count())
 
         if args.config:
             with open(args.config, encoding="utf8") as config_input:
@@ -536,12 +644,10 @@ def main():
         else:
             config = {}
 
-        # Init columns cache
-        table_cache, file_format_type = get_snowflake_statics(config)
-
-        # Consume singer messages
-        singer_messages = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
-        persist_lines(config, singer_messages, table_cache, file_format_type)
+        # get file_format details from snowflake
+        file_format_type = get_snowflake_statics(config)
+        
+        export_to_snowflake(config, None, file_format_type)
 
         LOGGER.debug("Exiting normally")
     except SymonException as e:

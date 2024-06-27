@@ -408,9 +408,8 @@ class DbSync:
 
         return ','.join(key_props)
 
-    def put_to_stage(self, file, stream, count, temp_dir=None):
+    def put_to_stage(self, file, stream, temp_dir=None):
         """Upload file to snowflake stage"""
-        self.logger.info('Uploading %d rows to stage', count)
         return self.upload_client.upload_file(file, stream, temp_dir)
 
     def delete_from_stage(self, stream, s3_key):
@@ -456,10 +455,9 @@ class DbSync:
         table_name = self.table_name(stream, False, without_schema=True)
         return f"{self.schema_name}.%{table_name}"
 
-    def load_file(self, s3_key, count, size_bytes):
+    def load_file(self, s3_key):
         """Load a supported file type from snowflake stage into target table"""
         stream = self.stream_schema_message['stream']
-        self.logger.info("Loading %d rows into '%s'", count, self.table_name(stream, False))
 
         # Get list if columns with types
         columns_with_trans = [
@@ -510,7 +508,7 @@ class DbSync:
         self.logger.info(
             'Loading into %s: %s',
             self.table_name(stream, False),
-            json.dumps({'inserts': inserts, 'updates': updates, 'size_bytes': size_bytes})
+            json.dumps({'inserts': inserts, 'updates': updates})
         )
 
     def _load_file_merge(self, s3_key, stream, columns_with_trans) -> Tuple[int, int]:
@@ -832,6 +830,7 @@ class DbSync:
                 query = self.create_table_query()
                 self.logger.info('Table %s does not exist. Creating...', table_name_with_schema)
                 self.query(query)
+                self.logger.info('Create table with query %s', query)
             except snowflake.connector.errors.ProgrammingError as e:
                 # No privilege to create table. However, this error could be raised if user doesn't have select or ownership privilege on the existing table
                 # as the table will not be returned from get_tables call. We need ownership privilege on updating existing table.
