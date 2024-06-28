@@ -19,20 +19,20 @@ from jsonschema import Draft7Validator, FormatChecker
 from singer import get_logger
 from datetime import datetime, timedelta
 
-from target_snowflake.file_formats import csv
-from target_snowflake.file_formats import parquet
-from target_snowflake import stream_utils
+from export_snowflake.file_formats import csv
+from export_snowflake.file_formats import parquet
+from export_snowflake import stream_utils
 
-from target_snowflake.db_sync import DbSync
-from target_snowflake.file_format import FileFormatTypes
-from target_snowflake.exceptions import (
+from export_snowflake.db_sync import DbSync
+from export_snowflake.file_format import FileFormatTypes
+from export_snowflake.exceptions import (
     RecordValidationException,
     UnexpectedValueTypeException,
     InvalidValidationOperationException,
     SymonException
 )
 
-LOGGER = get_logger('target_snowflake')
+LOGGER = get_logger('export_snowflake')
 
 # Tone down snowflake.connector log noise by only outputting warnings and higher level messages
 logging.getLogger('snowflake.connector').setLevel(logging.WARNING)
@@ -508,7 +508,7 @@ def flush_records(stream: str,
             'tap': archive_tap,
             'schema': archive_schema,
             'table': archive_table,
-            'archived-by': 'pipelinewise_target_snowflake'
+            'archived-by': 'pipelinewise_export_snowflake'
         }
 
         if 'column' in archive_load_files:

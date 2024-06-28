@@ -6,13 +6,13 @@ import time
 
 from typing import List, Dict, Union, Tuple, Set
 from singer import get_logger
-from target_snowflake import flattening
-from target_snowflake import stream_utils
-from target_snowflake.file_format import FileFormat, FileFormatTypes
+from export_snowflake import flattening
+from export_snowflake import stream_utils
+from export_snowflake.file_format import FileFormat, FileFormatTypes
 
-from target_snowflake.exceptions import TooManyRecordsException, SymonException
-from target_snowflake.upload_clients.s3_upload_client import S3UploadClient
-from target_snowflake.upload_clients.snowflake_upload_client import SnowflakeUploadClient
+from export_snowflake.exceptions import TooManyRecordsException, SymonException
+from export_snowflake.upload_clients.s3_upload_client import S3UploadClient
+from export_snowflake.upload_clients.snowflake_upload_client import SnowflakeUploadClient
 
 
 def validate_config(config):
@@ -194,7 +194,7 @@ class DbSync:
         self.table_cache = table_cache
 
         # logger to be used across the class's methods
-        self.logger = get_logger('target_snowflake')
+        self.logger = get_logger('export_snowflake')
 
         # Validate connection configuration
         config_errors = validate_config(connection_config)
