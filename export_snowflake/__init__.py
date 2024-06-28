@@ -284,7 +284,7 @@ def persist_lines(config, lines, table_cache=None, file_format_type: FileFormatT
                 # Stop loading data by default if no Primary Key.
                 #
                 # If you want to load tables with no Primary Key:
-                #  1) Set ` 'primary_key_required': false ` in the target-snowflake config.json
+                #  1) Set ` 'primary_key_required': false ` in the export-snowflake config.json
                 #  or
                 #  2) Use fastsync [postgres-to-snowflake, mysql-to-snowflake, etc.]
                 if config.get('primary_key_required', True) and len(o['key_properties']) == 0:
