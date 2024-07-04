@@ -12,6 +12,7 @@ import boto3
 import time
 
 import multiprocessing
+import concurrent.futures
 
 from typing import Dict, List, Optional
 from joblib import Parallel, delayed, parallel_backend
@@ -527,33 +528,62 @@ def flush_records(stream: str,
     # Delete file from S3
     db_sync.delete_from_stage(stream, s3_key)
 
+def upload_to_snowflake_per_thread(s3_client, job, error_queue, config, schema, file_format_type):
+    bucket, key, filename, stream = job
+    try:
+        if not error_queue.empty():
+            # exit if error occurred in other thread
+            # error_queue is shared among all threads, populate the error_queue with "ERROR" and return
+            status = error_queue.get()
+            if status == "ERROR":
+                error_queue.put("ERROR")
+                return
+            
+        start_time = time.time()
 
-def transfer_data_in_parallel(s3_csv_lists, config, o, file_format_type):
+        s3_client.download_file(bucket, key, filename)
+                
+        # upload to snowflake
+        file_path = filename.replace("\\", "/")
+        db_sync = DbSync(config, schema, None, file_format_type)
+
+        s3_key = db_sync.put_to_stage(file_path, stream, temp_dir=None)
+            
+        # remove from local after uploading to snowflake
+        elasped_time = time.time() - start_time
+        LOGGER.info(f"Time taken to download and upload {filename} is {elasped_time}")
+        LOGGER.info(f'start_time: {start_time}, end_time: {time.time()} for {filename}')
+        os.remove(file_path)
+    except Exception as e:
+        LOGGER.info(
+            f"Error occurred in upload thread: {filename}")
+        # send exit signal to other thread
+        error_queue.put("ERROR")
+        raise e
+
+    
+
+def transfer_data_from_s3_to_snowflake(s3_csv_lists, config, schema, file_format_type):
     parallel_transfer_start_time = time.time()
     
-    # make the decision of how many processes to use later
-    pool = multiprocessing.Pool(4, initialize_s3_client_db_sync(config, o, file_format_type))
-    pool.map(download_file, s3_csv_lists)
-    pool.close()
-    pool.join()
+    error_queue = multiprocessing.Queue(1)
+    # boto3 clients are generally thread-safe, but not for resources or sessions
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients
+    session = boto3.session.Session()
+    s3_client = session.client('s3')
     
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(upload_to_snowflake_per_thread, s3_client, csv_list, error_queue, config, schema, file_format_type) for csv_list in s3_csv_lists]
+        
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as exc:
+                raise SymonException(f'An error occurred while loading data to Snowflake: ' + exc, 'snowflake.clientError')
+
     parallel_transfer_end_time = time.time()
     stream = config["stream"]
-    LOGGER.info(f"Start time for transfering {stream} as {parallel_transfer_start_time} and end time as {parallel_transfer_end_time}")
-
-
-def download_file(job):
-    bucket, key, filename, stream = job
-
-    s3_client.download_file(bucket, key, filename)
-
-    # upload to snowflake
-    file_path = filename.replace("\\", "/")
-
-    s3_key = db_sync.put_to_stage(file_path, stream, temp_dir=None)
-
-    # remove from local after uploading to snowflake
-    os.remove(file_path)
+    LOGGER.info(f"Elapsed time usage for {stream} is {parallel_transfer_end_time - parallel_transfer_start_time}")
 
 
 def export_to_snowflake(config, o, file_format_type): 
@@ -568,7 +598,9 @@ def export_to_snowflake(config, o, file_format_type):
     schema_file = None
     for obj in response['Contents']:
         if obj['Key'].endswith('.csv.gz'):
-            s3_csv_lists.append((bucket, obj['Key'], obj['Key'].split("/")[-1], config["stream"]))
+            # append the exportTaskID to the file name to avoid conflict
+            file_name = obj['Key'].split("/")[-2] + '-' + obj['Key'].split("/")[-1]
+            s3_csv_lists.append((bucket, obj['Key'], file_name, config["stream"]))
         # for both python and spark parquet_to_csv steps, we always have a schema.json with the schema details
         if obj['Key'].endswith('.json'):
             schema_file = obj['Key']
@@ -598,20 +630,18 @@ def export_to_snowflake(config, o, file_format_type):
     db_sync.create_schema_if_not_exists()
     db_sync.sync_table()
 
-    # the csv files in s3 are compressed, changde the parquet_to_csv to write into gzip format, also remove the headers
-    transfer_data_in_parallel(s3_csv_lists, config, o, file_format_type)
+    # the csv files in s3 are compressed, changed the parquet_to_csv to write into gzip format, also remove the headers
+    transfer_data_from_s3_to_snowflake(s3_csv_lists, config, o, file_format_type)
 
     # Snowflake locks the table when we run query against it, so we need to load the file sequentially
     try: 
         start_time = time.time()
         for obj in s3_csv_lists:
             stage_file_path = obj[2].replace("\\", "/")
-            LOGGER.info("------stage_file_path------")
-            LOGGER.info(stage_file_path)
             
             db_sync.load_file(stage_file_path)
         end_time = time.time()
-        LOGGER.info(f"Time taken to load the files for {stream}: {end_time - start_time}")
+        LOGGER.info(f"Elapsed time usage to load {len(s3_csv_lists)} files for {stream}: {end_time - start_time}")
     except Exception as e:
         LOGGER.info("Error occurred while loading the file: ", e)
         # errors are already handled inside the load_file function, just raise here
@@ -634,9 +664,6 @@ def main():
         arg_parser = argparse.ArgumentParser()
         arg_parser.add_argument('-c', '--config', help='Config file')
         args = arg_parser.parse_args()
-        
-        LOGGER.info("------number of cpu---------")
-        LOGGER.info(multiprocessing.cpu_count())
 
         if args.config:
             with open(args.config, encoding="utf8") as config_input:

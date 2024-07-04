@@ -830,7 +830,7 @@ class DbSync:
                 query = self.create_table_query()
                 self.logger.info('Table %s does not exist. Creating...', table_name_with_schema)
                 self.query(query)
-                self.logger.info('Create table with query %s', query)
+                self.logger.debug('Create table with query %s', query)
             except snowflake.connector.errors.ProgrammingError as e:
                 # No privilege to create table. However, this error could be raised if user doesn't have select or ownership privilege on the existing table
                 # as the table will not be returned from get_tables call. We need ownership privilege on updating existing table.
