@@ -46,15 +46,6 @@ DEFAULT_MAX_PARALLELISM = 16  # Don't use more than this number of threads by de
 ERROR_START_MARKER = '[target_error_start]'
 ERROR_END_MARKER = '[target_error_end]'
 
-# single s3_client and db_sync object per process
-s3_client = None
-db_sync = None
-def initialize_s3_client_db_sync(config, o, file_format_type):
-    global s3_client
-    global db_sync
-    s3_client = boto3.client('s3')
-    db_sync = DbSync(config, o, None, file_format_type)
-
 def add_metadata_columns_to_schema(schema_message):
     """Metadata _sdc columns according to the stitch documentation at
     https://www.stitchdata.com/docs/data-structure/integration-schemas#sdc-columns
