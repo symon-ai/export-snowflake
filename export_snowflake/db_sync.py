@@ -542,6 +542,20 @@ class DbSync:
                 
                 cur.execute(stage_generation_query)
         return
+
+    def remove_external_s3_stage(self):
+        temp_stage_name = self.get_temporary_stage_name()
+        with self.open_connection() as connection:
+            with connection.cursor(snowflake.connector.DictCursor) as cur:
+                stage_removal_query = f"DROP STAGE IF EXISTS {temp_stage_name}"
+                
+                # need to point to the correct schema before creating the stage
+                default_schema_query = self.use_default_schema()
+                cur.execute(default_schema_query)
+
+                self.logger.debug('Removing temporary external stage: %s', stage_removal_query)
+                cur.execute(stage_removal_query)
+        return
     
     def _load_file_merge(self, stream, columns_with_trans) -> Tuple[int, int]:
         # MERGE does insert and update
