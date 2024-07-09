@@ -16,7 +16,6 @@ import concurrent.futures
 
 from typing import Dict, List, Optional
 from joblib import Parallel, delayed, parallel_backend
-from jsonschema import Draft7Validator, FormatChecker
 from singer import get_logger
 from datetime import datetime, timedelta
 

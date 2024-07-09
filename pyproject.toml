@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "export-snowflake"
 version="2.2.0.6"
-description = "Ttarget for loading data from S3 to local and upload to Snowflake"
+description = "Export for loading data from S3 to Snowflake"
 authors = ["Wise"]
 classifiers = [
           'License :: OSI Approved :: Apache Software License',
