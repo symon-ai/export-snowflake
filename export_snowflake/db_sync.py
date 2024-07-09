@@ -515,9 +515,9 @@ class DbSync:
     
     def get_temporary_stage_name(self):
         """Generate snowflake stage name"""
-        export_task_id = self.connection_config.get('export_task_id', None)
-        if export_task_id:
-            return f"export_{export_task_id}_temp_stage"
+        stream = self.connection_config.get('stream', None)
+        if stream:
+            return f"export_{stream}_temp_stage"
     
     def generate_temporary_external_s3_stage(self, bucket, prefix, s3_credentials):
         temp_stage_name = self.get_temporary_stage_name()
@@ -533,8 +533,8 @@ class DbSync:
                     aws_session_token=s3_credentials.get('sessionToken', None),
                     file_format_name=self.connection_config['file_format']
                 )
-                self.logger.info('Creating temporary external stage: %s', stage_generation_query)
-                self.logger.info(self.schema_name)
+                self.logger.debug('Creating temporary external stage: %s', stage_generation_query)
+                self.logger.debug(self.schema_name)
                 
                 # need to point to the correct schema before creating the stage
                 default_schema_query = self.use_default_schema()
@@ -575,7 +575,7 @@ class DbSync:
                 default_schema_query = self.use_default_schema()
                 cur.execute(default_schema_query)
                 
-                self.logger.info('Running query: %s', merge_sql)
+                self.logger.debug('Running query: %s', merge_sql)
                 cur.execute(merge_sql)
                 # Get number of inserted and updated records
                 results = cur.fetchall()

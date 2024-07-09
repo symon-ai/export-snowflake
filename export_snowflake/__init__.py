@@ -90,7 +90,7 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
         # sync_table will check the schema with the table in Snowflake, if there's a miss matching in columns, raise an error
         db_sync.sync_table()
         
-        # generate a new stage with export_task_id prefix in Snowflake
+        # generate a new stage with stream in Snowflake
         # the stage will be an external stage that points to the s3
         # the following merge query will be processed directly against the external stage
         db_sync.generate_temporary_external_s3_stage(bucket, prefix, config['s3_credentials'])
