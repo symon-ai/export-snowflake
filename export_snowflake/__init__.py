@@ -46,6 +46,8 @@ DEFAULT_MAX_PARALLELISM = 16  # Don't use more than this number of threads by de
 ERROR_START_MARKER = '[target_error_start]'
 ERROR_END_MARKER = '[target_error_end]'
 
+LOCAL_SCHEMA_FILE_PATH = 'local_schema.json'
+
 def add_metadata_columns_to_schema(schema_message):
     """Metadata _sdc columns according to the stitch documentation at
     https://www.stitchdata.com/docs/data-structure/integration-schemas#sdc-columns
@@ -577,34 +579,27 @@ def transfer_data_from_s3_to_snowflake(s3_csv_lists, config, schema, file_format
     LOGGER.info(f"Elapsed time usage for {stream} is {parallel_transfer_end_time - parallel_transfer_start_time}")
 
 
-def export_to_snowflake(config, o, file_format_type): 
-    # retrieve the csv.gz lists and the schema file from the s3 bucket
+def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
+    # retrieve the schema file from s3 bucket
+    # if the table doesn't exist, create the new table based on the schema
     s3_client = boto3.client('s3')
 
     bucket = config["bucket"]
     prefix = config["prefix"]
     response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
 
-    s3_csv_lists = []
     schema_file = None
     for obj in response['Contents']:
-        if obj['Key'].endswith('.csv.gz'):
-            # append the exportTaskID to the file name to avoid conflict
-            file_name = obj['Key'].split("/")[-2] + '-' + obj['Key'].split("/")[-1]
-            s3_csv_lists.append((bucket, obj['Key'], file_name, config["stream"]))
         # for both python and spark parquet_to_csv steps, we always have a schema.json with the schema details
         if obj['Key'].endswith('.json'):
             schema_file = obj['Key']
-
+    
     if schema_file is None:
         raise Exception("Schema file not found in the s3 bucket")
-    if len(s3_csv_lists) == 0:
-        raise Exception("No csv files found in the s3 bucket")
 
-    local_schema_file = 'local_schema.json'
-    s3_client.download_file(bucket, schema_file, local_schema_file)
+    s3_client.download_file(bucket, schema_file, LOCAL_SCHEMA_FILE_PATH)
 
-    f = open(local_schema_file)
+    f = open(LOCAL_SCHEMA_FILE_PATH)
     schema = json.load(f)
 
     # generate the schema object for DbSync
@@ -614,39 +609,23 @@ def export_to_snowflake(config, o, file_format_type):
         "schema": {"properties": schema['properties']},
         "key_properties": config["key_columns"]
     }
-
+    
     # check if the schema(Snowflake table) exists and create it if not
-    # sync_table will check the schema with the table in Snowflake, if there's a miss matching in columns, raise an error
     db_sync = DbSync(config, o, None, file_format_type)
     db_sync.create_schema_if_not_exists()
+    
+    # sync_table will check the schema with the table in Snowflake, if there's a miss matching in columns, raise an error
     db_sync.sync_table()
+    
+    # generate a new stage with export_task_id prefix in Snowflake
+    # the stage will be an external stage that points to the s3
+    # the following merge query will be processed directly against the external stage
+    db_sync.generate_temporary_external_s3_stage(bucket, prefix, config['s3_credentials'])
+    
+    # after creating the external stage, we could load the file directly from the s3 to Snowflake
+    # need to specify the patterns in the s3 bucket to filter out the target csv.gz files
+    db_sync.load_file()
 
-    # the csv files in s3 are compressed, changed the parquet_to_csv to write into gzip format, also remove the headers
-    transfer_data_from_s3_to_snowflake(s3_csv_lists, config, o, file_format_type)
-
-    # Snowflake locks the table when we run query against it, so we need to load the file sequentially
-    try: 
-        start_time = time.time()
-        for obj in s3_csv_lists:
-            stage_file_path = obj[2].replace("\\", "/")
-            
-            db_sync.load_file(stage_file_path)
-        end_time = time.time()
-        LOGGER.info(f"Elapsed time usage to load {len(s3_csv_lists)} files for {stream}: {end_time - start_time}")
-    except Exception as e:
-        LOGGER.info("Error occurred while loading the file: ", e)
-        # errors are already handled inside the load_file function, just raise here
-        raise e
-    finally:
-        # delete the remote file anyway
-        # Snowflake will charge for the memory usage if we don't delete the file
-        for obj in s3_csv_lists: 
-            stage_file_path = obj[2].replace("\\", "/")
-            db_sync.delete_from_stage(stream, stage_file_path)
-        
-        # local csv.gz files are removed after uploading to snowflake
-        os.remove(local_schema_file)
-        LOGGER.info("Deleted all files from the stage and local")
 
 def main():
     """Main function"""
@@ -665,7 +644,7 @@ def main():
         # get file_format details from snowflake
         file_format_type = get_snowflake_statics(config)
         
-        export_to_snowflake(config, None, file_format_type)
+        direct_transfer_data_from_s3_to_snowflake(config, None, file_format_type)
 
         LOGGER.debug("Exiting normally")
     except SymonException as e:

@@ -455,7 +455,7 @@ class DbSync:
         table_name = self.table_name(stream, False, without_schema=True)
         return f"{self.schema_name}.%{table_name}"
 
-    def load_file(self, s3_key):
+    def load_file(self):
         """Load a supported file type from snowflake stage into target table"""
         stream = self.stream_schema_message['stream']
 
@@ -476,7 +476,6 @@ class DbSync:
         if len(self.stream_schema_message['key_properties']) > 0:
             try:
                 inserts, updates = self._load_file_merge(
-                    s3_key=s3_key,
                     stream=stream,
                     columns_with_trans=columns_with_trans
                 )
@@ -488,11 +487,11 @@ class DbSync:
                 raise ex
 
         # Insert only with COPY command if no primary key
+        # we will never execute COPY command as KEY columns is always mandatory
         else:
             try:
                 inserts, updates = (
                     self._load_file_copy(
-                        s3_key=s3_key,
                         stream=stream,
                         columns_with_trans=columns_with_trans
                     ),
@@ -511,7 +510,40 @@ class DbSync:
             json.dumps({'inserts': inserts, 'updates': updates})
         )
 
-    def _load_file_merge(self, s3_key, stream, columns_with_trans) -> Tuple[int, int]:
+    def use_default_schema(self):
+        return f"USE SCHEMA {self.schema_name}"
+    
+    def get_temporary_stage_name(self):
+        """Generate snowflake stage name"""
+        export_task_id = self.connection_config.get('export_task_id', None)
+        if export_task_id:
+            return f"export_{export_task_id}_temp_stage"
+    
+    def generate_temporary_external_s3_stage(self, bucket, prefix, s3_credentials):
+        temp_stage_name = self.get_temporary_stage_name()
+        destination_url = f"s3://{bucket}/{prefix}"
+        
+        with self.open_connection() as connection:
+            with connection.cursor(snowflake.connector.DictCursor) as cur:
+                stage_generation_query = self.file_format.formatter.create_stage_generation_sql(
+                    stage_name=temp_stage_name,
+                    url=destination_url,
+                    aws_key_id=s3_credentials['accessKeyID'],
+                    aws_secret_key=s3_credentials['secretKey'],
+                    aws_session_token=s3_credentials.get('sessionToken', None),
+                    file_format_name=self.connection_config['file_format']
+                )
+                self.logger.info('Creating temporary external stage: %s', stage_generation_query)
+                self.logger.info(self.schema_name)
+                
+                # need to point to the correct schema before creating the stage
+                default_schema_query = self.use_default_schema()
+                cur.execute(default_schema_query)
+                
+                cur.execute(stage_generation_query)
+        return
+    
+    def _load_file_merge(self, stream, columns_with_trans) -> Tuple[int, int]:
         # MERGE does insert and update
         inserts = 0
         updates = 0
@@ -519,13 +551,17 @@ class DbSync:
             with connection.cursor(snowflake.connector.DictCursor) as cur:
                 merge_sql = self.file_format.formatter.create_merge_sql(
                     table_name=self.table_name(stream, False),
-                    stage_name=self.get_stage_name(stream),
-                    s3_key=s3_key,
+                    stage_name=self.get_temporary_stage_name(),
                     file_format_name=self.connection_config['file_format'],
                     columns=columns_with_trans,
                     pk_merge_condition=self.primary_key_merge_condition()
                 )
-                self.logger.debug('Running query: %s', merge_sql)
+                
+                # need to point to the correct schema before creating the stage
+                default_schema_query = self.use_default_schema()
+                cur.execute(default_schema_query)
+                
+                self.logger.info('Running query: %s', merge_sql)
                 cur.execute(merge_sql)
                 # Get number of inserted and updated records
                 results = cur.fetchall()
@@ -534,7 +570,7 @@ class DbSync:
                     updates = results[0].get('number of rows updated', 0)
         return inserts, updates
 
-    def _load_file_copy(self, s3_key, stream, columns_with_trans) -> int:
+    def _load_file_copy(self, stream, columns_with_trans) -> int:
         # COPY does insert only
         inserts = 0
         with self.open_connection() as connection:
@@ -542,7 +578,6 @@ class DbSync:
                 copy_sql = self.file_format.formatter.create_copy_sql(
                     table_name=self.table_name(stream, False),
                     stage_name=self.get_stage_name(stream),
-                    s3_key=s3_key,
                     file_format_name=self.connection_config['file_format'],
                     columns=columns_with_trans
                 )
