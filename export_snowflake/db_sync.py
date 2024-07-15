@@ -78,9 +78,6 @@ def column_type(schema_property):
     if 'object' in property_type or 'array' in property_type:
         col_type = 'variant'
 
-    # Every date-time JSON value is currently mapped to TIMESTAMP_NTZ
-    elif property_format == 'date-time':
-        col_type = 'timestamp_ntz'
     elif property_format == 'date':
         col_type = 'date'
     elif property_format == 'time':
@@ -95,6 +92,9 @@ def column_type(schema_property):
         col_type = 'number'
     elif 'boolean' in property_type:
         col_type = 'boolean'
+    elif 'date-time' in property_type:
+        # Every date-time JSON value is currently mapped to TIMESTAMP_NTZ
+        col_type = 'timestamp_ntz'
 
     return col_type
 
