@@ -76,15 +76,16 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
     stream = config["stream"]
     o = {
         "stream": stream,
-        "schema": {"properties": schema['properties']},
+        "schema": {"properties": schema['fields']},
         "key_properties": config["key_columns"]
     }
     
+    db_sync = DbSync(config, o, None, file_format_type)
+
     try:
         transfer_start_time = time.time()
 
         # check if the schema(Snowflake table) exists and create it if not
-        db_sync = DbSync(config, o, None, file_format_type)
         db_sync.create_schema_if_not_exists()
         
         # sync_table will check the schema with the table in Snowflake, if there's a miss matching in columns, raise an error
