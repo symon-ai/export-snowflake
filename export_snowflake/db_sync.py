@@ -513,7 +513,7 @@ class DbSync:
         return f"USE SCHEMA {self.schema_name}"
 
     def get_export_task_id(self):
-        prefix = self.connection_config.get('prefix', None)
+        prefix = self.connection_config.get('prefix')
         # result is the export task id from the prefix
         # id is generated from base64url, so might contain '-' characters, replace it with '_'
         result = os.path.basename(prefix).replace('-', '_')
