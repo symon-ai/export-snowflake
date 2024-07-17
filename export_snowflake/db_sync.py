@@ -3,6 +3,7 @@ import sys
 import snowflake.connector
 import re
 import time
+import os
 
 from typing import List, Dict, Union, Tuple, Set
 from singer import get_logger
@@ -510,12 +511,20 @@ class DbSync:
 
     def use_default_schema(self):
         return f"USE SCHEMA {self.schema_name}"
+
+    def get_export_task_id(self):
+        prefix = self.connection_config.get('prefix', None)
+        # result is the export task id from the prefix
+        # id is generated from base64url, so might contain '-' characters, replace it with '_'
+        result = os.path.basename(prefix).replace('-', '_')
+        
+        return result
     
     def get_temporary_stage_name(self):
         """Generate snowflake stage name"""
-        stream = self.connection_config.get('stream', None)
-        if stream:
-            return f"export_{stream}_temp_stage"
+        export_task_id = self.get_export_task_id()
+        
+        return f"export_{export_task_id}_stage"
     
     def generate_temporary_external_s3_stage(self, bucket, prefix, s3_credentials):
         temp_stage_name = self.get_temporary_stage_name()
@@ -876,8 +885,8 @@ class DbSync:
             try:
                 query = self.create_table_query()
                 self.logger.info('Table %s does not exist. Creating...', table_name_with_schema)
-                self.query(query)
                 self.logger.debug('Create table with query %s', query)
+                self.query(query)
             except snowflake.connector.errors.ProgrammingError as e:
                 # No privilege to create table. However, this error could be raised if user doesn't have select or ownership privilege on the existing table
                 # as the table will not be returned from get_tables call. We need ownership privilege on updating existing table.
