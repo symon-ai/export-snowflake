@@ -544,11 +544,8 @@ class DbSync:
                 self.logger.debug('Creating temporary external stage: %s', stage_generation_query)
                 self.logger.debug(self.schema_name)
                 
-                # need to point to the correct schema before creating the stage
-                # default_schema_query = self.use_default_schema()
-                # cur.execute(default_schema_query)
-                
-                # cur.execute(stage_generation_query)
+        # temporary stage will only exist during the connection cursor session
+        # only execute the generation query later during the data loading session
         return stage_generation_query
 
     def remove_external_s3_stage(self):
@@ -584,7 +581,6 @@ class DbSync:
                 cur.execute(default_schema_query)
                 
                 # execute the temporary stage generation query
-                # temporary stage will exist during the connection cursor session
                 cur.execute(stage_generation_query)
                 
                 self.logger.debug('Running query: %s', merge_sql)
