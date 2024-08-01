@@ -531,18 +531,17 @@ class DbSync:
         temp_stage_name = self.get_temporary_stage_name()
         destination_url = f"s3://{bucket}/{prefix}"
         
-        with self.open_connection() as connection:
-            with connection.cursor(snowflake.connector.DictCursor) as cur:
-                stage_generation_query = self.file_format.formatter.create_stage_generation_sql(
-                    stage_name=temp_stage_name,
-                    url=destination_url,
-                    aws_key_id=s3_credentials['accessKeyID'],
-                    aws_secret_key=s3_credentials['secretKey'],
-                    aws_session_token=s3_credentials.get('sessionToken', None),
-                    file_format_name=self.connection_config['file_format']
-                )
-                self.logger.debug('Creating temporary external stage: %s', stage_generation_query)
-                self.logger.debug(self.schema_name)
+
+        stage_generation_query = self.file_format.formatter.create_stage_generation_sql(
+            stage_name=temp_stage_name,
+            url=destination_url,
+            aws_key_id=s3_credentials['accessKeyID'],
+            aws_secret_key=s3_credentials['secretKey'],
+            aws_session_token=s3_credentials.get('sessionToken', None),
+            file_format_name=self.connection_config['file_format']
+        )
+        
+        self.logger.debug('Temporary external stage generation query: %s', stage_generation_query)
                 
         # temporary stage will only exist during the connection cursor session
         # only execute the generation query later during the data loading session
