@@ -540,8 +540,6 @@ class DbSync:
             aws_session_token=s3_credentials.get('sessionToken', None),
             file_format_name=self.connection_config['file_format']
         )
-        
-        self.logger.debug('Temporary external stage generation query: %s', stage_generation_query)
                 
         # temporary stage will only exist during the connection cursor session
         # only execute the generation query later during the data loading session
@@ -580,6 +578,7 @@ class DbSync:
                 cur.execute(default_schema_query)
                 
                 # execute the temporary stage generation query
+                self.logger.debug('Temporary external stage generation query: %s', stage_generation_query)
                 cur.execute(stage_generation_query)
                 
                 self.logger.debug('Running query: %s', merge_sql)
