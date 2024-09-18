@@ -32,7 +32,7 @@ def validate_config(config):
     snowflake_required_config_keys = [
         'account',
         'dbname',
-        'auth_method'
+        'auth_method',
         'warehouse',
         'file_format'
     ]
