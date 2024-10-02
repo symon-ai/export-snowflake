@@ -19,17 +19,8 @@ from export_snowflake.upload_clients.snowflake_upload_client import SnowflakeUpl
 def validate_config(config):
     """Validate configuration"""
     errors = []
-    s3_required_config_keys = [
-        'account',
-        'dbname',
-        'user',
-        'auth_method',
-        's3_bucket',
-        'stage',
-        'file_format'
-    ]
 
-    snowflake_required_config_keys = [
+    required_config_keys = [
         'account',
         'dbname',
         'auth_method',
@@ -39,16 +30,6 @@ def validate_config(config):
 
     required_config_keys = []
 
-    # Use external stages if both s3_bucket and stage defined
-    if config.get('s3_bucket', None) and config.get('stage', None):
-        required_config_keys = s3_required_config_keys
-    # Use table stage if none s3_bucket and stage defined
-    elif not config.get('s3_bucket', None) and not config.get('stage', None):
-        required_config_keys = snowflake_required_config_keys
-    else:
-        errors.append("Only one of 's3_bucket' or 'stage' keys defined in config. "
-                      "Use both of them if you want to use an external stage when loading data into snowflake "
-                      "or don't use any of them if you want ot use table stages.")
     auth_method = config.get('auth_method', None)
     if auth_method == 'basic':
         required_config_keys.extend(['user', 'password'])
