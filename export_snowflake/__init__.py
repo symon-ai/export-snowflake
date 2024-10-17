@@ -82,6 +82,7 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
     }
     
     db_sync = DbSync(config, o, None, file_format_type)
+    remove_temp_external_stage = False
 
     try:
         transfer_start_time = time.time()
@@ -109,9 +110,9 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
         storage_integration = config.get('storage_integration', '').upper()
         if f"Location" in err_msg and "not allowed by integration" in err_msg:
             s3_allowed_location = f"s3://{bucket}/{prefix[:prefix.rfind('/') + 1]}"
-            raise SymonException(f"Snowflake storage integration '{storage_integration}' must include '{s3_allowed_location}' in S3_ALLOWED_LOCATIONS.", "snowflake.clientError")
-        if f"Insufficient privileges to operate on integration":
-            raise SymonException(f"USAGE privilege is missing on storage integration '{storage_integration}'.", "snowflake.clientError")
+            raise SymonException(f'Snowflake storage integration "{storage_integration}" must include "{s3_allowed_location}" in S3_ALLOWED_LOCATIONS.', "snowflake.clientError")
+        if f"Insufficient privileges to operate on integration" in err_msg:
+            raise SymonException(f'USAGE privilege is missing on storage integration "{storage_integration}".', "snowflake.clientError")
         raise
     except Exception as e:
         LOGGER.error(f"Error occurred in direct_transfer_data_from_s3_to_snowflake: {e}")
@@ -121,7 +122,11 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
         os.remove(LOCAL_SCHEMA_FILE_PATH)
         
         # Snowflake will only remove the external stage object, the s3 bucket and files will remain
-        db_sync.remove_external_s3_stage()
+        try:
+            db_sync.remove_external_s3_stage()
+        except Exception as e:
+            LOGGER.error(f"Error occurred while removing external stage: {e}")
+            pass
 
 def main():
     """Main function"""
