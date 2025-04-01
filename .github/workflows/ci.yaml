@@ -29,7 +29,7 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip setuptools wheel
           pip install -e .[test]
-          pip install pytest pytest-cov pylint
+          pip install pytest pytest-cov pylint python-dotenv toml tesults pytest-tesults
 
       # - name: Pylinting
       #   run: |
@@ -67,7 +67,7 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip setuptools wheel
           pip install -e .[test]
-          pip install pytest pytest-cov
+          pip install pytest pytest-cov pylint python-dotenv toml tesults pytest-tesults
 
       - name: Integration tests
         run: |

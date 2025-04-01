@@ -97,7 +97,6 @@ class TestCsv(unittest.TestCase):
     def test_create_copy_sql(self):
         self.assertEqual(csv.create_copy_sql(table_name='foo_table',
                                              stage_name='foo_stage',
-                                             s3_key='foo_s3_key.csv',
                                              file_format_name='foo_file_format',
                                              columns=[{'name': 'COL_1'},
                                                       {'name': 'COL_2'},
@@ -111,7 +110,6 @@ class TestCsv(unittest.TestCase):
     def test_create_merge_sql(self):
         self.assertEqual(csv.create_merge_sql(table_name='foo_table',
                                              stage_name='foo_stage',
-                                             s3_key='foo_s3_key.csv',
                                              file_format_name='foo_file_format',
                                              columns=[{'name': 'COL_1', 'trans': ''},
                                                       {'name': 'COL_2', 'trans': ''},
