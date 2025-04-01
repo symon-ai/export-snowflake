@@ -29,6 +29,7 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip setuptools wheel
           pip install -e .[test]
+          pip install pytest pytest-cov
 
       # - name: Pylinting
       #   run: |
@@ -66,6 +67,7 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip setuptools wheel
           pip install -e .[test]
+          pip install pytest pytest-cov
 
       - name: Integration tests
         run: |

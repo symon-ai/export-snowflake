@@ -22,8 +22,6 @@ boto3 = "1.23.10"
 
 [tool.poetry.dev-dependencies]
 pylint = "*"
-pytest = "*"
-pytest-cov = "*"
 python-dotenv = "0.19.*"
 toml = "*"
 tesults = "*"
