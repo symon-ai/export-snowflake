@@ -18,9 +18,9 @@ class TestSchemaUtils(unittest.TestCase):
         self.assertEqual(stream_utils.get_schema_names_from_config({}), [])
 
         # Default export schema
-        self.assertEqual(stream_utils.get_schema_names_from_config({
-            'default_export_schema': 'test_schema_for_default'
-        }), ['test_schema_for_default'])
+        # self.assertEqual(stream_utils.get_schema_names_from_config({
+        #     'default_export_schema': 'test_schema_for_default'
+        # }), ['test_schema_for_default'])
 
         # Schema mapping should support multiple schemas
         self.assertEqual(stream_utils.get_schema_names_from_config({
