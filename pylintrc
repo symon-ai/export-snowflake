@@ -38,7 +38,7 @@ extension-pkg-whitelist=ujson
 # operator. Joining a lot of strings can lead to a maximum recursion error in
 # Pylint and this flag can prevent that. It has one side effect, the resulting
 # AST will be different than the one from reality.
-optimize-ast=no
+#optimize-ast=no # Removed as it's no longer a valid option.
 
 
 [MESSAGES CONTROL]
@@ -53,7 +53,7 @@ confidence=
 disable=wrong-import-order,
         broad-except,
         missing-module-docstring,
-        duplicate-code,  # not useful until a major code refactoring
+        duplicate-code  # not useful until a major code refactoring
 
 
 enable=import-error,
@@ -68,7 +68,6 @@ enable=import-error,
        used-before-assignment,
        cell-var-from-loop,
        global-variable-undefined,
-       redefine-in-handler,
        unused-import,
        unused-wildcard-import,
        global-variable-not-assigned,
@@ -77,8 +76,6 @@ enable=import-error,
        global-at-module-level,
        bad-open-mode,
        redundant-unittest-assert,
-       boolean-datetime
-       deprecated-method,
        anomalous-unicode-escape-in-string,
        anomalous-backslash-in-string,
        not-in-loop,
@@ -101,9 +98,6 @@ enable=import-error,
        assert-on-tuple,
        dangerous-default-value,
        duplicate-key,
-       useless-else-on-loop
-       expression-not-assigned,
-       confusing-with-statement,
        unnecessary-lambda,
        pointless-statement,
        pointless-string-statement,
@@ -113,10 +107,6 @@ enable=import-error,
        exec-used,
        using-constant-test,
        bad-super-call,
-       missing-super-argument,
-       slots-on-old-class,
-       super-on-old-class,
-       property-on-old-class,
        not-an-iterable,
        not-a-mapping,
        format-needs-mapping,
@@ -132,20 +122,15 @@ enable=import-error,
        bad-format-string,
        missing-format-attribute,
        missing-format-argument-key,
-       unused-format-string-argument
+       unused-format-string-argument,
        unused-format-string-key,
        invalid-format-index,
        bad-indentation,
-       mixed-indentation,
        unnecessary-semicolon,
-       lowercase-l-suffix,
        invalid-encoded-data,
-       unpacking-in-except,
-       import-star-module-level,
        long-suffix,
        old-octal-literal,
        old-ne-operator,
-       backtick,
        old-raise-syntax,
        metaclass-assignment,
        next-method-called,
@@ -263,13 +248,11 @@ evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / stateme
 # used to format the message information. See doc for all details
 #msg-template=
 
-
 [LOGGING]
 
 # Logging modules to check that the string format arguments are in logging
 # function parameter format
 logging-modules=logging
-
 
 [FORMAT]
 
@@ -302,7 +285,6 @@ indent-after-paren=4
 # Expected format of line ending, e.g. empty (any line ending), LF or CRLF.
 expected-line-ending-format=
 
-
 [TYPECHECK]
 
 # Tells whether missing members accessed in mixin class should be ignored. A
@@ -325,7 +307,6 @@ ignored-classes=
 # expressions are accepted.
 generated-members=
 
-
 [VARIABLES]
 
 # Tells whether we should check for unused import in __init__ files.
@@ -343,7 +324,6 @@ additional-builtins=
 # name must start or end with one of those strings.
 callbacks=cb_,_cb
 
-
 [SIMILARITIES]
 
 # Minimum lines number of a similarity.
@@ -357,7 +337,6 @@ ignore-docstrings=yes
 
 # Ignore imports when computing similarities.
 ignore-imports=no
-
 
 [SPELLING]
 
@@ -375,12 +354,10 @@ spelling-private-dict-file=
 # --spelling-private-dict-file option instead of raising a message.
 spelling-store-unknown-words=no
 
-
 [MISCELLANEOUS]
 
 # List of note tags to take in consideration, separated by a comma.
 notes=FIXME,XXX,TODO
-
 
 [BASIC]
 
@@ -468,12 +445,10 @@ no-docstring-rgx=^_
 # ones are exempt.
 docstring-min-length=-1
 
-
 [ELIF]
 
 # Maximum number of nested blocks for function / method body
 max-nested-blocks=5
-
 
 [IMPORTS]
 
@@ -491,7 +466,6 @@ ext-import-graph=
 # Create a graph of internal dependencies in the given file (report RP0402 must
 # not be disabled)
 int-import-graph=
-
 
 [DESIGN]
 
@@ -529,7 +503,6 @@ max-public-methods=20
 # Maximum number of boolean expressions in a if statement
 max-bool-expr=5
 
-
 [CLASSES]
 
 # List of method names used to declare (i.e. assign) instance attributes.
@@ -545,9 +518,8 @@ valid-metaclass-classmethod-first-arg=mcs
 # warning.
 exclude-protected=_asdict,_fields,_replace,_source,_make
 
-
 [EXCEPTIONS]
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception
