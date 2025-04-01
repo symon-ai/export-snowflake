@@ -8,8 +8,7 @@ import botocore
 import boto3
 import export_snowflake
 
-from export_snowflake import RecordValidationException
-from export_snowflake.exceptions import PrimaryKeyNotFoundException
+from export_snowflake.exceptions import (PrimaryKeyNotFoundException, RecordValidationException)
 from export_snowflake.db_sync import DbSync
 from export_snowflake.upload_clients.s3_upload_client import S3UploadClient
 
