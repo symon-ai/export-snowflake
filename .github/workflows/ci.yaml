@@ -29,7 +29,7 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip setuptools wheel
           pip install -e .[test]
-          pip install pytest pytest-cov
+          pip install pytest pytest-cov pylint pylintrc
 
       - name: Pylinting
         run: |
