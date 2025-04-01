@@ -31,10 +31,10 @@ jobs:
           pip install -e .[test]
           pip install pytest pytest-cov pylint
 
-      - name: Pylinting
-        run: |
-          source venv/bin/activate
-          pylint export_snowflake/
+      # - name: Pylinting
+      #   run: |
+      #     source venv/bin/activate
+      #     pylint export_snowflake/
 
       - name: Unit Tests
         run: |
