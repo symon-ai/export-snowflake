@@ -70,12 +70,12 @@ class TestIntegration(unittest.TestCase):
 
 
     def get_test_config():
-        db_config = get_db_config()
+        db_config = self.get_db_config()
 
         return db_config
 
 
-    def get_test_tap_lines(filename):
+    def self.get_test_tap_lines(filename):
         lines = []
         with open('{}/resources/{}'.format(os.path.dirname(__file__), filename)) as tap_stdout:
             for line in tap_stdout.readlines():
@@ -91,7 +91,7 @@ class TestIntegration(unittest.TestCase):
     ]
 
     def setUp(self):
-        self.config = get_test_config()
+        self.config = self.get_test_config()
         self.snowflake = DbSync(self.config)
 
         # Drop export schema
@@ -349,13 +349,13 @@ class TestIntegration(unittest.TestCase):
 
     def test_invalid_json(self):
         """Receiving invalid JSONs should raise an exception"""
-        tap_lines = get_test_tap_lines('invalid-json.json')
+        tap_lines = self.get_test_tap_lines('invalid-json.json')
         with self.assertRaises(json.decoder.JSONDecodeError):
             self.persist_lines_with_cache(tap_lines)
 
     def test_message_order(self):
         """RECORD message without a previously received SCHEMA message should raise an exception"""
-        tap_lines = get_test_tap_lines('invalid-message-order.json')
+        tap_lines = self.get_test_tap_lines('invalid-message-order.json')
         with self.assertRaises(Exception):
             self.persist_lines_with_cache(tap_lines)
 
@@ -393,7 +393,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_no_encryption(self):
         """Loading multiple tables from the same input tap with various columns types"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Turning off client-side encryption and load
         self.config['client_side_encryption_master_key'] = ''
@@ -403,7 +403,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_client_side_encryption(self):
         """Loading multiple tables from the same input tap with various columns types"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Turning on client-side encryption and load
         self.config['client_side_encryption_master_key'] = os.environ.get('CLIENT_SIDE_ENCRYPTION_MASTER_KEY')
@@ -413,7 +413,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_client_side_encryption_and_wrong_master_key(self):
         """Loading multiple tables from the same input tap with various columns types"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Turning on client-side encryption and load but using a well formatted but wrong master key
         self.config['client_side_encryption_master_key'] = "Wr0n6m45t3rKeY0123456789a0123456789a0123456="
@@ -422,7 +422,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_metadata_columns(self):
         """Loading multiple tables from the same input tap with various columns types"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Turning on adding metadata columns
         self.config['add_metadata_columns'] = True
@@ -433,7 +433,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_defined_parallelism(self):
         """Loading multiple tables from the same input tap with various columns types"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Using fixed 1 thread parallelism
         self.config['parallelism'] = 1
@@ -444,7 +444,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_hard_delete(self):
         """Loading multiple tables from the same input tap with deleted rows"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Turning on hard delete mode
         self.config['hard_delete'] = True
@@ -458,7 +458,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_with_multiple_schema(self):
         """Loading table with multiple SCHEMA messages"""
-        tap_lines = get_test_tap_lines('messages-with-multi-schemas.json')
+        tap_lines = self.get_test_tap_lines('messages-with-multi-schemas.json')
 
         # Load with default settings
         self.persist_lines_with_cache(tap_lines)
@@ -471,7 +471,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_binary_columns_and_hard_delete(self):
         """Loading multiple tables from the same input tap with deleted rows"""
-        tap_lines = get_test_tap_lines('messages-with-binary-columns.json')
+        tap_lines = self.get_test_tap_lines('messages-with-binary-columns.json')
 
         # Turning on hard delete mode
         self.config['hard_delete'] = True
@@ -485,7 +485,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_table_with_reserved_word_as_name_and_hard_delete(self):
         """Loading a table where the name is a reserved word with deleted rows"""
-        tap_lines = get_test_tap_lines('messages-with-reserved-name-as-table-name.json')
+        tap_lines = self.get_test_tap_lines('messages-with-reserved-name-as-table-name.json')
 
         # Turning on hard delete mode
         self.config['hard_delete'] = True
@@ -499,7 +499,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_table_with_space(self):
         """Loading a table where the name has space"""
-        tap_lines = get_test_tap_lines('messages-with-space-in-table-name.json')
+        tap_lines = self.get_test_tap_lines('messages-with-space-in-table-name.json')
 
         # Turning on hard delete mode
         self.config['hard_delete'] = True
@@ -513,7 +513,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_unicode_characters(self):
         """Loading unicode encoded characters"""
-        tap_lines = get_test_tap_lines('messages-with-unicode-characters.json')
+        tap_lines = self.get_test_tap_lines('messages-with-unicode-characters.json')
 
         # Load with default settings
         self.persist_lines_with_cache(tap_lines)
@@ -537,7 +537,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_non_db_friendly_columns(self):
         """Loading non-db friendly columns like, camelcase, minus signs, etc."""
-        tap_lines = get_test_tap_lines('messages-with-non-db-friendly-columns.json')
+        tap_lines = self.get_test_tap_lines('messages-with-non-db-friendly-columns.json')
 
         # Load with default settings
         self.persist_lines_with_cache(tap_lines)
@@ -560,7 +560,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_nested_schema_unflattening(self):
         """Loading nested JSON objects into VARIANT columns without flattening"""
-        tap_lines = get_test_tap_lines('messages-with-nested-schema.json')
+        tap_lines = self.get_test_tap_lines('messages-with-nested-schema.json')
 
         # Load with default settings - Flattening disabled
         self.persist_lines_with_cache(tap_lines)
@@ -590,7 +590,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_nested_schema_flattening(self):
         """Loading nested JSON objects with flattening and not not flattening"""
-        tap_lines = get_test_tap_lines('messages-with-nested-schema.json')
+        tap_lines = self.get_test_tap_lines('messages-with-nested-schema.json')
 
         # Turning on data flattening
         self.config['data_flattening_max_level'] = 10
@@ -621,8 +621,8 @@ class TestIntegration(unittest.TestCase):
 
     def test_column_name_change(self):
         """Tests correct renaming of snowflake columns after source change"""
-        tap_lines_before_column_name_change = get_test_tap_lines('messages-with-three-streams.json')
-        tap_lines_after_column_name_change = get_test_tap_lines(
+        tap_lines_before_column_name_change = self.get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines_after_column_name_change = self.get_test_tap_lines(
             'messages-with-three-streams-modified-column.json')
 
         # Load with default settings
@@ -682,8 +682,8 @@ class TestIntegration(unittest.TestCase):
 
     def test_column_name_change_without_table_cache(self):
         """Tests correct renaming of snowflake columns after source change with not using table caching"""
-        tap_lines_before_column_name_change = get_test_tap_lines('messages-with-three-streams.json')
-        tap_lines_after_column_name_change = get_test_tap_lines(
+        tap_lines_before_column_name_change = self.get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines_after_column_name_change = self.get_test_tap_lines(
             'messages-with-three-streams-modified-column.json')
 
         # Load with default settings
@@ -743,7 +743,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_logical_streams_from_pg_with_hard_delete_and_default_batch_size_should_pass(self):
         """Tests logical streams from pg with inserts, updates and deletes"""
-        tap_lines = get_test_tap_lines('messages-pg-logical-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-pg-logical-streams.json')
 
         # Turning on hard delete mode
         self.config['hard_delete'] = True
@@ -753,7 +753,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_logical_streams_from_pg_with_hard_delete_and_batch_size_of_5_should_pass(self):
         """Tests logical streams from pg with inserts, updates and deletes"""
-        tap_lines = get_test_tap_lines('messages-pg-logical-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-pg-logical-streams.json')
 
         # Turning on hard delete mode
         self.config['hard_delete'] = True
@@ -764,7 +764,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_logical_streams_from_pg_with_hard_delete_and_batch_size_of_5_and_no_records_should_pass(self):
         """Tests logical streams from pg with inserts, updates and deletes"""
-        tap_lines = get_test_tap_lines('messages-pg-logical-streams-no-records.json')
+        tap_lines = self.get_test_tap_lines('messages-pg-logical-streams-no-records.json')
 
         # Turning on hard delete mode
         self.config['hard_delete'] = True
@@ -777,7 +777,7 @@ class TestIntegration(unittest.TestCase):
     def test_flush_streams_with_no_intermediate_flushes(self, mock_emit_state):
         """Test emitting states when no intermediate flush required"""
         mock_emit_state.get.return_value = None
-        tap_lines = get_test_tap_lines('messages-pg-logical-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-pg-logical-streams.json')
 
         # Set batch size big enough to never has to flush in the middle
         self.config['hard_delete'] = True
@@ -805,7 +805,7 @@ class TestIntegration(unittest.TestCase):
     def test_flush_streams_with_intermediate_flushes(self, mock_emit_state):
         """Test emitting states when intermediate flushes required"""
         mock_emit_state.get.return_value = None
-        tap_lines = get_test_tap_lines('messages-pg-logical-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-pg-logical-streams.json')
 
         # Set batch size small enough to trigger multiple stream flushes
         self.config['hard_delete'] = True
@@ -909,7 +909,7 @@ class TestIntegration(unittest.TestCase):
     def test_flush_streams_with_intermediate_flushes_on_all_streams(self, mock_emit_state):
         """Test emitting states when intermediate flushes required and flush_all_streams is enabled"""
         mock_emit_state.get.return_value = None
-        tap_lines = get_test_tap_lines('messages-pg-logical-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-pg-logical-streams.json')
 
         # Set batch size small enough to trigger multiple stream flushes
         self.config['hard_delete'] = True
@@ -1013,7 +1013,7 @@ class TestIntegration(unittest.TestCase):
     @mock.patch('export_snowflake.emit_state')
     def test_flush_streams_based_on_batch_wait_limit(self, mock_emit_state):
         """Tests logical streams from pg with inserts, updates and deletes"""
-        tap_lines = get_test_tap_lines('messages-pg-logical-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-pg-logical-streams.json')
 
         mock_emit_state.get.return_value = None
 
@@ -1027,7 +1027,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_record_validation(self):
         """Test validating records"""
-        tap_lines = get_test_tap_lines('messages-with-invalid-records.json')
+        tap_lines = self.get_test_tap_lines('messages-with-invalid-records.json')
 
         # Loading invalid records when record validation enabled should fail at ...
         self.config['validate_records'] = True
@@ -1046,7 +1046,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_pg_records_validation(self):
         """Test validating records from postgres tap"""
-        tap_lines_invalid_records = get_test_tap_lines('messages-pg-with-invalid-records.json')
+        tap_lines_invalid_records = self.get_test_tap_lines('messages-pg-with-invalid-records.json')
 
         # Loading invalid records when record validation enabled should fail at ...
         self.config['validate_records'] = True
@@ -1058,14 +1058,14 @@ class TestIntegration(unittest.TestCase):
         self.persist_lines_with_cache(tap_lines_invalid_records)
 
         # Valid records should pass for both with and without validation
-        tap_lines_valid_records = get_test_tap_lines('messages-pg-with-valid-records.json')
+        tap_lines_valid_records = self.get_test_tap_lines('messages-pg-with-valid-records.json')
 
         self.config['validate_records'] = True
         self.persist_lines_with_cache(tap_lines_valid_records)
 
     def test_loading_tables_with_custom_temp_dir(self):
         """Loading multiple tables from the same input tap using custom temp directory"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Turning on client-side encryption and load
         self.config['temp_dir'] = ('~/.pipelinewise/tmp')
@@ -1076,7 +1076,7 @@ class TestIntegration(unittest.TestCase):
     def test_aws_env_vars(self):
         """Test loading data with credentials defined in AWS environment variables
         than explicitly provided access keys"""
-        tap_lines = get_test_tap_lines("messages-with-three-streams.json")
+        tap_lines = self.get_test_tap_lines("messages-with-three-streams.json")
 
         try:
             # Save original config to restore later
@@ -1171,7 +1171,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_loading_tables_with_no_compression(self):
         """Loading multiple tables with compression turned off"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Turning off client-side encryption and load
         self.config['no_compression'] = True
@@ -1201,7 +1201,7 @@ class TestIntegration(unittest.TestCase):
     def test_query_tagging(self):
         """Loading multiple tables with query tagging"""
         snowflake = DbSync(self.config)
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
         current_time = datetime.datetime.now().strftime('%H:%M:%s')
 
         # Tag queries with dynamic schema and table tokens
@@ -1248,7 +1248,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_table_stage(self):
         """Test if data can be loaded via table stages"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Set s3_bucket and stage to None to use table stages
         self.config['s3_bucket'] = None
@@ -1267,7 +1267,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_custom_role(self):
         """Test if custom role can be used"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Set custom role
         self.config['role'] = 'invalid-not-existing-role'
@@ -1279,14 +1279,14 @@ class TestIntegration(unittest.TestCase):
 
     def test_parsing_date_failure(self):
         """Test if custom role can be used"""
-        tap_lines = get_test_tap_lines('messages-with-unexpected-types.json')
+        tap_lines = self.get_test_tap_lines('messages-with-unexpected-types.json')
 
         with self.assertRaises(export_snowflake.UnexpectedValueTypeException):
             self.persist_lines_with_cache(tap_lines)
 
     def test_parquet(self):
         """Test if parquet file can be loaded"""
-        tap_lines = get_test_tap_lines('messages-with-three-streams.json')
+        tap_lines = self.get_test_tap_lines('messages-with-three-streams.json')
 
         # Set parquet file format
         self.config['file_format'] = os.environ.get('export_SNOWFLAKE_FILE_FORMAT_PARQUET')
@@ -1311,7 +1311,7 @@ class TestIntegration(unittest.TestCase):
             key = file_in_archive["Key"]
             self.s3_client.delete_object(Bucket=s3_bucket, Key=key)
 
-        tap_lines = get_test_tap_lines('messages-simple-table.json')
+        tap_lines = self.get_test_tap_lines('messages-simple-table.json')
         self.persist_lines_with_cache(tap_lines)
 
         # Verify expected file metadata in S3
@@ -1351,7 +1351,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_stream_with_changing_pks_should_succeed(self):
         """Test if table will have its PKs adjusted according to changes in schema key-properties"""
-        tap_lines = get_test_tap_lines('messages-with-changing-pk.json')
+        tap_lines = self.get_test_tap_lines('messages-with-changing-pk.json')
 
         self.persist_lines_with_cache(tap_lines)
 
@@ -1381,14 +1381,14 @@ class TestIntegration(unittest.TestCase):
 
     # def test_stream_with_null_values_in_pks_should_fail(self):
     #     """Test if null values in PK column should abort the process"""
-    #     tap_lines = get_test_tap_lines('messages-with-null-pk.json')
+    #     tap_lines = self.get_test_tap_lines('messages-with-null-pk.json')
 
     #     with self.assertRaises(PrimaryKeyNotFoundException):
     #         self.persist_lines_with_cache(tap_lines)
 
     def test_stream_with_new_pks_should_succeed(self):
         """Test if table will have new PKs after not having any"""
-        tap_lines = get_test_tap_lines('messages-with-new-pk.json')
+        tap_lines = self.get_test_tap_lines('messages-with-new-pk.json')
 
         self.config['primary_key_required'] = False
 
@@ -1420,7 +1420,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_stream_with_falsy_pks_should_succeed(self):
         """Test if data will be loaded if records have falsy values"""
-        tap_lines = get_test_tap_lines('messages-with-falsy-pk-values.json')
+        tap_lines = self.get_test_tap_lines('messages-with-falsy-pk-values.json')
 
         self.persist_lines_with_cache(tap_lines)
 
