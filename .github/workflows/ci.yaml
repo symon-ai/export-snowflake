@@ -34,6 +34,7 @@ jobs:
       - name: Pylinting
         run: |
           source venv/bin/activate
+          pylint --generate-rcfile > .pylintrc
           pylint --rcfile pylintrc export_snowflake/
 
       - name: Unit Tests
