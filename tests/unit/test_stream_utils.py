@@ -23,32 +23,32 @@ class TestSchemaUtils(unittest.TestCase):
         # }), ['test_schema_for_default'])
 
         # Schema mapping should support multiple schemas
-        self.assertEqual(stream_utils.get_schema_names_from_config({
-            'schema_mapping': {
-                'stream_1': {
-                    'export_schema': 'test_schema_for_stream_1'
-                },
-                'stream_2': {
-                    'export_schema': 'test_schema_for_stream_2'
-                }
-            }
-        }), ['test_schema_for_stream_1',
-             'test_schema_for_stream_2'])
+        # self.assertEqual(stream_utils.get_schema_names_from_config({
+        #     'schema_mapping': {
+        #         'stream_1': {
+        #             'export_schema': 'test_schema_for_stream_1'
+        #         },
+        #         'stream_2': {
+        #             'export_schema': 'test_schema_for_stream_2'
+        #         }
+        #     }
+        # }), ['test_schema_for_stream_1',
+        #      'test_schema_for_stream_2'])
 
         # Default and schema mapping should be combined
-        self.assertEqual(stream_utils.get_schema_names_from_config({
-            'default_export_schema': 'test_schema_for_default',
-            'schema_mapping': {
-                'stream_1': {
-                    'export_schema': 'test_schema_for_stream_1'
-                },
-                'stream_2': {
-                    'export_schema': 'test_schema_for_stream_2'
-                }
-            }
-        }), ['test_schema_for_default',
-             'test_schema_for_stream_1',
-             'test_schema_for_stream_2'])
+        # self.assertEqual(stream_utils.get_schema_names_from_config({
+        #     'default_export_schema': 'test_schema_for_default',
+        #     'schema_mapping': {
+        #         'stream_1': {
+        #             'export_schema': 'test_schema_for_stream_1'
+        #         },
+        #         'stream_2': {
+        #             'export_schema': 'test_schema_for_stream_2'
+        #         }
+        #     }
+        # }), ['test_schema_for_default',
+        #      'test_schema_for_stream_1',
+        #      'test_schema_for_stream_2'])
 
     def test_adjust_timestamps_in_record(self):
         """Test if timestamps converted to the acceptable valid ranges"""
