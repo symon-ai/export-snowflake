@@ -24,7 +24,21 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Setup virtual environment
-        run: make test
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip setuptools wheel
+          pip install -e .[test]
+
+      - name: Pylinting
+        run: |
+          source venv/bin/activate
+          pylint --rcfile pylintrc export_snowflake/
+
+      - name: Unit Tests
+        run: |
+          source venv/bin/activate
+          pytest tests/unit -vv --cov export_snowflake --cov-fail-under=67
 
   integration_test:
     name: Integration Testing
@@ -32,10 +46,11 @@ jobs:
     environment: ci_tests
     strategy:
       matrix:
-        python-version: [ 3.8 ]
+        python-version: [ 3.8, 3.9 ]
     concurrency:
       group: integration_tests-${{ github.head_ref }}
       cancel-in-progress: true
+    needs: lint_and_test
 
     steps:
       - name: Checkout repository
@@ -46,8 +61,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Setup virtual environment
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip setuptools wheel
+          pip install -e .[test]
+
       - name: Integration tests
-        run: make test
+        run: |
+          source venv/bin/activate
+          pytest tests/integration/ -vvx --cov export_snowflake --cov-fail-under=86
         env:
           EXPORT_SNOWFLAKE_ACCOUNT: ${{ secrets.EXPORT_SNOWFLAKE_ACCOUNT }}
           EXPORT_SNOWFLAKE_DBNAME: ${{ secrets.EXPORT_SNOWFLAKE_DBNAME }}
@@ -58,7 +82,7 @@ jobs:
           EXPORT_SNOWFLAKE_AWS_ACCESS_KEY: ${{ secrets.EXPORT_SNOWFLAKE_AWS_ACCESS_KEY }}
           EXPORT_SNOWFLAKE_AWS_SECRET_ACCESS_KEY: ${{ secrets.EXPORT_SNOWFLAKE_AWS_SECRET_ACCESS_KEY }}
           EXPORT_SNOWFLAKE_S3_BUCKET: ${{ secrets.EXPORT_SNOWFLAKE_S3_BUCKET }}
-          EXPORT_SNOWFLAKE_S3_KEY_PREFIX: ${{ secrets.EXPORT_SNOWFLAKE_S3_KEY_PREFIX }}
+          EXPORT_SNOWFLAKE_S3_KEY_PREFIX: ${{ secrets.EXPORT_SNOWFLINK_S3_KEY_PREFIX }}
           EXPORT_SNOWFLAKE_STAGE: ${{ secrets.EXPORT_SNOWFLAKE_STAGE }}
           EXPORT_SNOWFLAKE_FILE_FORMAT_CSV: ${{ secrets.EXPORT_SNOWFLAKE_FILE_FORMAT_CSV }}
           EXPORT_SNOWFLAKE_FILE_FORMAT_PARQUET: ${{ secrets.EXPORT_SNOWFLAKE_FILE_FORMAT_PARQUET }}
