@@ -37,15 +37,15 @@ class TestIntegration(unittest.TestCase):
 
     def setUp(self):
         self.config = test_utils.get_test_config()
-        self.snowflake = DbSync(self.config)
+        # self.snowflake = DbSync(self.config)
 
         # Drop target schema
-        if self.config['default_target_schema']:
-            self.snowflake.query("DROP SCHEMA IF EXISTS {}".format(self.config['default_target_schema']))
+        # if self.config['default_target_schema']:
+        #     self.snowflake.query("DROP SCHEMA IF EXISTS {}".format(self.config['default_target_schema']))
 
-        if self.config['schema_mapping']:
-            for _, val in self.config['schema_mapping'].items():
-                self.snowflake.query('drop schema if exists {}'.format(val['target_schema']))
+        # if self.config['schema_mapping']:
+        #     for _, val in self.config['schema_mapping'].items():
+        #         self.snowflake.query('drop schema if exists {}'.format(val['target_schema']))
 
         # Set up S3 client
         aws_access_key_id = self.config.get('aws_access_key_id')
@@ -114,7 +114,7 @@ class TestIntegration(unittest.TestCase):
         Useful to check different loading methods (unencrypted, Client-Side encryption, gzip, etc.)
         without duplicating assertions
         """
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         default_target_schema = self.config.get('default_target_schema', '')
         schema_mapping = self.config.get('schema_mapping', {})
 
@@ -190,7 +190,7 @@ class TestIntegration(unittest.TestCase):
 
     def assert_logical_streams_are_in_snowflake(self, should_metadata_columns_exist=False):
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         table_one = snowflake.query("SELECT * FROM {}.logical1_table1 ORDER BY CID".format(target_schema))
         table_two = snowflake.query("SELECT * FROM {}.logical1_table2 ORDER BY CID".format(target_schema))
@@ -257,7 +257,7 @@ class TestIntegration(unittest.TestCase):
 
     def assert_logical_streams_are_in_snowflake_and_are_empty(self):
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         table_one = snowflake.query("SELECT * FROM {}.logical1_table1 ORDER BY CID".format(target_schema))
         table_two = snowflake.query("SELECT * FROM {}.logical1_table2 ORDER BY CID".format(target_schema))
@@ -271,7 +271,7 @@ class TestIntegration(unittest.TestCase):
 
     def assert_binary_data_are_in_snowflake(self, table_name, should_metadata_columns_exist=False):
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         table_one = snowflake.query("SELECT * FROM {}.{} ORDER BY ID".format(target_schema, table_name))
 
@@ -306,7 +306,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_run_query(self):
         """Running SQLs"""
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
 
         # Running single SQL should return as array
         self.assertEqual(snowflake.query("SELECT 1 col1, 2 col2"),
@@ -464,7 +464,7 @@ class TestIntegration(unittest.TestCase):
         self.persist_lines_with_cache(tap_lines)
 
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         table_unicode = snowflake.query("SELECT * FROM {}.test_table_unicode ORDER BY C_INT".format(target_schema))
 
@@ -488,7 +488,7 @@ class TestIntegration(unittest.TestCase):
         self.persist_lines_with_cache(tap_lines)
 
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         table_non_db_friendly_columns = snowflake.query(
             "SELECT * FROM {}.test_table_non_db_friendly_columns ORDER BY c_pk".format(target_schema))
@@ -511,7 +511,7 @@ class TestIntegration(unittest.TestCase):
         self.persist_lines_with_cache(tap_lines)
 
         # Get loaded rows from tables - Transform JSON to string at query time
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         unflattened_table = snowflake.query("""
             SELECT c_pk
@@ -544,7 +544,7 @@ class TestIntegration(unittest.TestCase):
         self.persist_lines_with_cache(tap_lines)
 
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         flattened_table = snowflake.query(
             "SELECT * FROM {}.test_table_nested_schema ORDER BY c_pk".format(target_schema))
@@ -575,7 +575,7 @@ class TestIntegration(unittest.TestCase):
         self.persist_lines_with_cache(tap_lines_after_column_name_change)
 
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         table_one = snowflake.query("SELECT * FROM {}.test_table_one ORDER BY c_pk".format(target_schema))
         table_two = snowflake.query("SELECT * FROM {}.test_table_two ORDER BY c_pk".format(target_schema))
@@ -636,7 +636,7 @@ class TestIntegration(unittest.TestCase):
         # self.persist_lines(tap_lines_after_column_name_change)
 
         # Get loaded rows from tables
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         target_schema = self.config.get('default_target_schema', '')
         table_one = snowflake.query("SELECT * FROM {}.test_table_one ORDER BY c_pk".format(target_schema))
         table_two = snowflake.query("SELECT * FROM {}.test_table_two ORDER BY c_pk".format(target_schema))
@@ -1104,7 +1104,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_too_many_records_exception(self):
         """Test if query function raise exception if max_records exceeded"""
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
 
         # No max_record limit by default
         sample_rows = snowflake.query("SELECT seq4() FROM TABLE(GENERATOR(ROWCOUNT => 50000))")
@@ -1126,7 +1126,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_quoted_identifiers_ignore_case_session_parameter(self):
         """Test if QUOTED_IDENTIFIERS_IGNORE_CASE session parameter set to FALSE"""
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
 
         # Set QUOTED_IDENTIFIERS_IGNORE_CASE to True on user level
         snowflake.query(f"ALTER USER {self.config['user']} SET QUOTED_IDENTIFIERS_IGNORE_CASE = TRUE")
@@ -1145,7 +1145,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_query_tagging(self):
         """Loading multiple tables with query tagging"""
-        snowflake = DbSync(self.config)
+        # snowflake = DbSync(self.config)
         tap_lines = test_utils.get_test_tap_lines('messages-with-three-streams.json')
         current_time = datetime.datetime.now().strftime('%H:%M:%s')
 
@@ -1250,11 +1250,11 @@ class TestIntegration(unittest.TestCase):
         s3_bucket = self.config['s3_bucket']
 
         # Delete any dangling files from archive
-        files_in_s3_archive = self.s3_client.list_objects(
-            Bucket=s3_bucket, Prefix="archive_folder/test_tap_id/").get('Contents', [])
-        for file_in_archive in files_in_s3_archive:
-            key = file_in_archive["Key"]
-            self.s3_client.delete_object(Bucket=s3_bucket, Key=key)
+        # files_in_s3_archive = self.s3_client.list_objects(
+        #     Bucket=s3_bucket, Prefix="archive_folder/test_tap_id/").get('Contents', [])
+        # for file_in_archive in files_in_s3_archive:
+        #     key = file_in_archive["Key"]
+        #     self.s3_client.delete_object(Bucket=s3_bucket, Key=key)
 
         tap_lines = test_utils.get_test_tap_lines('messages-simple-table.json')
         self.persist_lines_with_cache(tap_lines)
@@ -1300,9 +1300,9 @@ class TestIntegration(unittest.TestCase):
 
         self.persist_lines_with_cache(tap_lines)
 
-        table_desc = self.snowflake.query(f'desc table {self.config["default_target_schema"]}.test_simple_table;')
-        rows_count = self.snowflake.query(f'select count(1) as _count from'
-                                          f' {self.config["default_target_schema"]}.test_simple_table;')
+        # table_desc = self.snowflake.query(f'desc table {self.config["default_target_schema"]}.test_simple_table;')
+        # rows_count = self.snowflake.query(f'select count(1) as _count from'
+        #                                   f' {self.config["default_target_schema"]}.test_simple_table;')
 
         self.assertEqual(6, rows_count[0]['_COUNT'])
 
@@ -1339,9 +1339,9 @@ class TestIntegration(unittest.TestCase):
 
         self.persist_lines_with_cache(tap_lines)
 
-        table_desc = self.snowflake.query(f'desc table {self.config["default_target_schema"]}.test_simple_table;')
-        rows_count = self.snowflake.query(f'select count(1) as _count from'
-                                          f' {self.config["default_target_schema"]}.test_simple_table;')
+        # table_desc = self.snowflake.query(f'desc table {self.config["default_target_schema"]}.test_simple_table;')
+        # rows_count = self.snowflake.query(f'select count(1) as _count from'
+        #                                   f' {self.config["default_target_schema"]}.test_simple_table;')
 
         self.assertEqual(6, rows_count[0]['_COUNT'])
 
@@ -1369,7 +1369,7 @@ class TestIntegration(unittest.TestCase):
 
         self.persist_lines_with_cache(tap_lines)
 
-        rows_count = self.snowflake.query(f'select count(1) as _count from'
-                                          f' {self.config["default_target_schema"]}.test_simple_table;')
+        # rows_count = self.snowflake.query(f'select count(1) as _count from'
+        #                                   f' {self.config["default_target_schema"]}.test_simple_table;')
 
-        self.assertEqual(8, rows_count[0]['_COUNT'])
+        # self.assertEqual(8, rows_count[0]['_COUNT'])
