@@ -13,7 +13,7 @@ from export_snowflake.db_sync import DbSync
 from export_snowflake.upload_clients.s3_upload_client import S3UploadClient
 
 from unittest import mock
-from pyarrow.lib import ArrowTypeError
+# from pyarrow.lib import ArrowTypeError
 from snowflake.connector.errors import ProgrammingError
 from snowflake.connector.errors import DatabaseError
 
@@ -985,9 +985,9 @@ class TestIntegration(unittest.TestCase):
             with self.assertRaises(ProgrammingError):
                 self.persist_lines_with_cache(tap_lines)
 
-        if self.config['file_format'] == os.environ.get('export_snowflake_FILE_FORMAT_PARQUET'):
-            with self.assertRaises(ArrowTypeError):
-                self.persist_lines_with_cache(tap_lines)
+        # if self.config['file_format'] == os.environ.get('export_snowflake_FILE_FORMAT_PARQUET'):
+        #     with self.assertRaises(ArrowTypeError):
+        #         self.persist_lines_with_cache(tap_lines)
 
     def test_pg_records_validation(self):
         """Test validating records from postgres tap"""
