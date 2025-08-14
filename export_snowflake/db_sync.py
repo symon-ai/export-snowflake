@@ -888,7 +888,6 @@ class DbSync:
         if len(found_tables) == 0:
             try:
                 query = self.create_table_query()
-                print('----create table query----', query)
                 self.logger.info('Table %s does not exist. Creating...', table_name_with_schema)
                 self.logger.debug('Create table with query %s', query)
                 self.query(query)
@@ -940,22 +939,6 @@ class DbSync:
         if new_pks != current_pks:
             raise SymonException(f'Altering primary key columns are not allowed. Current PK columns: {list(current_pks)}, New PK columns: {list(new_pks)}', 'snowflake.clientError')
 
-        try: 
-            # For now, we don't wish to enforce non-nullability on the pk columns
-            for pk in current_pks.union(new_pks):
-                queries.append(f'alter table {table_name} alter column {safe_column_name(pk)} drop not null;')
-            self.query(queries)
-        except snowflake.connector.errors.ProgrammingError as e:
-            # dropping 'NOT NULL' constraint in columns requires ownership privilege. However,
-            if 'Insufficient privileges to operate on table' not in str(e):
-                raise
-            self.logger.info('Failed to drop NOT NULL constraint on PK columns, running export as is.')
-            # if 'Insufficient privileges to operate on table' in str(e):
-            #     table_name_quote_removed = table_name.split('.')[1][1:-1]
-            #     # ownership privilege required for ddl
-            #     raise SymonException(f'OWNERSHIP privilege on table "{table_name_quote_removed.upper()}" is missing.', "snowflake.clientError")
-            # raise e
-
     def _get_current_pks(self) -> Set[str]:
         """
         Finds the stream's current Pk in Snowflake.
@@ -964,14 +947,10 @@ class DbSync:
         table_name = self.table_name(self.stream_schema_message['stream'], False)
 
         show_query = f"show primary keys in table {self.connection_config['dbname']}.{table_name};"
-        print('-------show_query-------')
-        print(show_query)
 
         columns = set()
         try:
             columns = self.query(show_query)
-            print('------columns-------')
-            print(columns)
 
         # Catch exception when schema not exists and SHOW TABLES throws a ProgrammingError
         # Regexp to extract snowflake error code and message from the exception message
