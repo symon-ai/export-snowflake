@@ -588,6 +588,13 @@ class DbSync:
                         non_nullable_column = err_msg[start_index: end_index]
                         raise SymonException(f'Column {non_nullable_column} contains NULL values. To allow NULL values, alter table definition to drop NOT NULL constraint on column {non_nullable_column}', 'snowflake.clientError')
                     raise
+                except snowflake.connector.errors.ProgrammingError as e:
+                    err_msg = str(e)
+                    if 'Insufficient privileges to operate on table' in str(e):
+                        start_index = err_msg.find("table '") + len("table '")
+                        table_name = err_msg[start_index:-1]
+                        raise SymonException(f'INSERT/UPDATE/DELETE privileges on table {table_name} are missing.', 'snowflake.clientError')
+                    raise
                 # Get number of inserted and updated records
                 results = cur.fetchall()
                 if len(results) > 0:
@@ -892,14 +899,13 @@ class DbSync:
                 self.logger.debug('Create table with query %s', query)
                 self.query(query)
             except snowflake.connector.errors.ProgrammingError as e:
-                # No privilege to create table. However, this error could be raised if user doesn't have select or ownership privilege on the existing table
-                # as the table will not be returned from get_tables call. We need ownership privilege on updating existing table.
+                # No privilege to create table. However, this error could be raised if user doesn't have select privilege on the existing table
+                # as the table will not be returned from get_tables call.
                 message = str(e)
                 if 'Insufficient privileges to operate on schema' in message:
-                    raise SymonException(f'CREATE TABLE privilege on schema "{schema_name_upper}" is missing. If the table {table_name_upper} already exists in the schema "{schema_name_upper}", please ensure you have OWNERSHIP privilege on the table.', "snowflake.clientError")
-                # if table exists, ownership privilege is needed on table as we use internal table stage and perform ddl
+                    raise SymonException(f'CREATE TABLE privilege on schema "{schema_name_upper}" is missing. If the table {table_name_upper} already exists in the schema "{schema_name_upper}", please ensure you have SELECT privilege on the table.', "snowflake.clientError")
                 if f"Table '{table_name_upper[1:-1]}' already exists, but current role has no privileges on it" in message:
-                    raise SymonException(f'OWNERSHIP privilege on table {table_name_upper} is missing.', "snowflake.clientError")
+                    raise SymonException(f'SELECT privilege on table {table_name_upper} is missing.', "snowflake.clientError")
                 raise
                 
             self.grant_privilege(self.schema_name, self.grantees, self.grant_select_on_all_tables_in_schema)
@@ -909,12 +915,7 @@ class DbSync:
                 self.table_cache = self.get_table_columns(table_schemas=[self.schema_name])
         else:
             self.logger.info('Table %s exists', table_name_with_schema)
-            try:
-                self.validate_columns()
-            except snowflake.connector.errors.ProgrammingError as e:
-                if f"Insufficient privileges to operate on table" in str(e):
-                    raise SymonException(f'OWNERSHIP privilege on table {table_name_upper} is missing.', "snowflake.clientError")
-                raise
+            self.validate_columns()
 
         self._refresh_table_pks()
 
