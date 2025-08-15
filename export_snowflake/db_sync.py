@@ -586,14 +586,13 @@ class DbSync:
                         start_index = err_msg.find('column ') + len('column ')
                         end_index = err_msg.find(' with error')
                         non_nullable_column = err_msg[start_index: end_index]
-                        raise SymonException(f'Column {non_nullable_column} contains NULL values. To allow NULL values, alter table definition to drop NOT NULL constraint on column {non_nullable_column}', 'snowflake.clientError')
+                        raise SymonException(f'Column "{non_nullable_column}" contains NULL values. To allow NULL values, alter table definition to drop NOT NULL constraint on column "{non_nullable_column}"', 'snowflake.clientError')
                     raise
                 except snowflake.connector.errors.ProgrammingError as e:
                     err_msg = str(e)
                     if 'Insufficient privileges to operate on table' in str(e):
-                        start_index = err_msg.find("table '") + len("table '")
-                        table_name = err_msg[start_index:-1]
-                        raise SymonException(f'INSERT/UPDATE/DELETE privileges on table {table_name} are missing.', 'snowflake.clientError')
+                        table_name = self.table_name(stream, False, True)
+                        raise SymonException(f'INSERT/UPDATE privileges on table {table_name} are missing.', 'snowflake.clientError')
                     raise
                 # Get number of inserted and updated records
                 results = cur.fetchall()
@@ -917,19 +916,14 @@ class DbSync:
             self.logger.info('Table %s exists', table_name_with_schema)
             self.validate_columns()
 
-        self._refresh_table_pks()
+        self.validate_table_pks()
 
-    def _refresh_table_pks(self):
+    def validate_table_pks(self):
         """
-        Refresh table PK constraints by either dropping or adding PK based on changes to `key_properties` of the
-        stream schema.
-        The non-nullability of PK column is also dropped.
+        Validate table PK matches `key_properties` of the stream schema.
         """
-        table_name = self.table_name(self.stream_schema_message['stream'], False)
         current_pks = self._get_current_pks()
         new_pks = set(pk.upper() for pk in self.stream_schema_message.get('key_properties', []))
-
-        queries = []
 
         self.logger.debug('Table: %s, Current PKs: %s | New PKs: %s ',
                           self.stream_schema_message['stream'],
