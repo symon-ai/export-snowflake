@@ -932,7 +932,7 @@ class DbSync:
                           )
 
         if new_pks != current_pks:
-            raise SymonException(f'Altering primary key columns are not allowed. Current PK columns: {list(current_pks)}, New PK columns: {list(new_pks)}', 'snowflake.clientError')
+            raise SymonException(f'Key columns must match the primary key of the table in the Snowflake database. (Table key columns: {list(current_pks)}, Provided key columns: {list(new_pks)})', 'snowflake.clientError')
 
     def _get_current_pks(self) -> Set[str]:
         """
