@@ -26,7 +26,6 @@ def flatten_key(k, sep):
 
     return sep.join(inflected_key)
 
-# pylint: disable=invalid-name
 def flatten_schema(d, sep='__'):
     items = []
     
@@ -64,7 +63,6 @@ def _should_json_dump_value(key, value, schema=None):
     return False
 
 
-# pylint: disable-msg=invalid-name
 def flatten_record(d, schema=None, parent_key=None, sep='__', level=0, max_level=0):
     """
 
