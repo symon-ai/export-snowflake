@@ -178,7 +178,7 @@ class DbSync:
         self.table_cache = table_cache
 
         # logger to be used across the class's methods
-        self.logger = get_logger('export_snowflake')
+        self.logger = get_logger()
 
         # Validate connection configuration
         config_errors = validate_config(connection_config)
