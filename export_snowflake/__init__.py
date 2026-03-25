@@ -24,7 +24,7 @@ from export_snowflake.exceptions import (
     SymonException
 )
 
-LOGGER = get_logger('export_snowflake')
+LOGGER = get_logger()
 
 # Tone down snowflake.connector log noise by only outputting warnings and higher level messages
 logging.getLogger('snowflake.connector').setLevel(logging.WARNING)
