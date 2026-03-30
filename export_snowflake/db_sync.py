@@ -3,53 +3,40 @@ import sys
 import snowflake.connector
 import re
 import time
+import os
 
 from typing import List, Dict, Union, Tuple, Set
 from singer import get_logger
-from target_snowflake import flattening
-from target_snowflake import stream_utils
-from target_snowflake.file_format import FileFormat, FileFormatTypes
+from export_snowflake import flattening
+from export_snowflake import stream_utils
+from export_snowflake.file_format import FileFormat, FileFormatTypes
 
-from target_snowflake.exceptions import TooManyRecordsException, SymonException
-from target_snowflake.upload_clients.s3_upload_client import S3UploadClient
-from target_snowflake.upload_clients.snowflake_upload_client import SnowflakeUploadClient
+from export_snowflake.exceptions import TooManyRecordsException, SymonException
+from export_snowflake.upload_clients.s3_upload_client import S3UploadClient
+from export_snowflake.upload_clients.snowflake_upload_client import SnowflakeUploadClient
 
 
 def validate_config(config):
     """Validate configuration"""
     errors = []
-    s3_required_config_keys = [
-        'account',
-        'dbname',
-        'user',
-        'password',
-        'warehouse',
-        's3_bucket',
-        'stage',
-        'file_format'
-    ]
 
-    snowflake_required_config_keys = [
+    required_config_keys = [
         'account',
         'dbname',
-        'user',
-        'password',
+        'auth_method',
         'warehouse',
         'file_format'
     ]
 
     required_config_keys = []
 
-    # Use external stages if both s3_bucket and stage defined
-    if config.get('s3_bucket', None) and config.get('stage', None):
-        required_config_keys = s3_required_config_keys
-    # Use table stage if none s3_bucket and stage defined
-    elif not config.get('s3_bucket', None) and not config.get('stage', None):
-        required_config_keys = snowflake_required_config_keys
+    auth_method = config.get('auth_method', None)
+    if auth_method == 'basic':
+        required_config_keys.extend(['user', 'password'])
+    elif auth_method == 'oauth':
+        required_config_keys.append('access_token')
     else:
-        errors.append("Only one of 's3_bucket' or 'stage' keys defined in config. "
-                      "Use both of them if you want to use an external stage when loading data into snowflake "
-                      "or don't use any of them if you want ot use table stages.")
+        raise Exception('auth_method must be either "basic" or "oauth".')
 
     # Check if mandatory keys exist
     for k in required_config_keys:
@@ -78,9 +65,6 @@ def column_type(schema_property):
     if 'object' in property_type or 'array' in property_type:
         col_type = 'variant'
 
-    # Every date-time JSON value is currently mapped to TIMESTAMP_NTZ
-    elif property_format == 'date-time':
-        col_type = 'timestamp_ntz'
     elif property_format == 'date':
         col_type = 'date'
     elif property_format == 'time':
@@ -95,6 +79,9 @@ def column_type(schema_property):
         col_type = 'number'
     elif 'boolean' in property_type:
         col_type = 'boolean'
+    elif 'date-time' in property_type:
+        # Every date-time JSON value is currently mapped to TIMESTAMP_NTZ
+        col_type = 'timestamp_ntz'
 
     return col_type
 
@@ -131,7 +118,6 @@ def primary_column_names(stream_schema_message):
     return [safe_column_name(p) for p in stream_schema_message['key_properties']]
 
 
-# pylint: disable=invalid-name
 def create_query_tag(query_tag_pattern: str, database: str = None, schema: str = None, table: str = None) -> str:
     """
     Generate a string to tag executed queries in Snowflake.
@@ -165,8 +151,6 @@ def create_query_tag(query_tag_pattern: str, database: str = None, schema: str =
 
     return query_tag
 
-
-# pylint: disable=too-many-public-methods,too-many-instance-attributes
 class DbSync:
     """DbSync class"""
 
@@ -194,7 +178,7 @@ class DbSync:
         self.table_cache = table_cache
 
         # logger to be used across the class's methods
-        self.logger = get_logger('target_snowflake')
+        self.logger = get_logger()
 
         # Validate connection configuration
         config_errors = validate_config(connection_config)
@@ -220,7 +204,6 @@ class DbSync:
                               "Use named stages with Parquet file format or table stages with CSV files format")
             sys.exit(1)
 
-        # Init stream schema pylint: disable=line-too-long
         if self.stream_schema_message is not None:
             #  Define target schema name.
             #  --------------------------
@@ -274,9 +257,7 @@ class DbSync:
                 self.grantees = config_schema_mapping[stream_schema_name].get('target_schema_select_permissions',
                                                                               self.grantees)
 
-            self.data_flattening_max_level = self.connection_config.get('data_flattening_max_level', 0)
-            self.flatten_schema = flattening.flatten_schema(stream_schema_message['schema'],
-                                                            max_level=self.data_flattening_max_level)
+            self.flatten_schema = flattening.flatten_schema(stream_schema_message['schema'])
 
         # Use external stage
         if connection_config.get('s3_bucket', None):
@@ -292,15 +273,13 @@ class DbSync:
             stream = self.stream_schema_message['stream']
         
         try:
-            return snowflake.connector.connect(
-                user=self.connection_config['user'],
-                password=self.connection_config['password'],
-                account=self.connection_config['account'],
-                database=self.connection_config['dbname'],
-                warehouse=self.connection_config['warehouse'],
-                role=self.connection_config.get('role', None),
-                autocommit=True,
-                session_parameters={
+            config = {
+                'account':self.connection_config['account'],
+                'database':self.connection_config['dbname'],
+                'warehouse':self.connection_config['warehouse'],
+                'role':self.connection_config.get('role', None),
+                'autocommit':True,
+                'session_parameters':{
                     # Quoted identifiers should be case sensitive
                     'QUOTED_IDENTIFIERS_IGNORE_CASE': 'FALSE',
                     'QUERY_TAG': create_query_tag(self.connection_config.get('query_tag'),
@@ -308,7 +287,15 @@ class DbSync:
                                                 schema=self.schema_name,
                                                 table=self.table_name(stream, False, True))
                 }
-            )
+            }
+            if self.connection_config.get('auth_method') == 'basic':
+                config['user'] = self.connection_config['user']
+                config['password'] = self.connection_config['password']
+            else:
+                config['authenticator'] = 'oauth'
+                config['token'] = self.connection_config['access_token']
+
+            return snowflake.connector.connect(**config)
         except snowflake.connector.errors.DatabaseError as e:
             if 'Incorrect username or password was specified' in str(e):
                 raise SymonException("The username or password provided is incorrect. Please check and try again.", "snowflake.clientError")
@@ -342,7 +329,6 @@ class DbSync:
 
                 qid = None
 
-                # pylint: disable=invalid-name
                 for q in queries:
 
                     # update the LAST_QID
@@ -408,9 +394,8 @@ class DbSync:
 
         return ','.join(key_props)
 
-    def put_to_stage(self, file, stream, count, temp_dir=None):
+    def put_to_stage(self, file, stream, temp_dir=None):
         """Upload file to snowflake stage"""
-        self.logger.info('Uploading %d rows to stage', count)
         return self.upload_client.upload_file(file, stream, temp_dir)
 
     def delete_from_stage(self, stream, s3_key):
@@ -456,10 +441,9 @@ class DbSync:
         table_name = self.table_name(stream, False, without_schema=True)
         return f"{self.schema_name}.%{table_name}"
 
-    def load_file(self, s3_key, count, size_bytes):
+    def load_file(self, stage_generation_query):
         """Load a supported file type from snowflake stage into target table"""
         stream = self.stream_schema_message['stream']
-        self.logger.info("Loading %d rows into '%s'", count, self.table_name(stream, False))
 
         # Get list if columns with types
         columns_with_trans = [
@@ -478,9 +462,9 @@ class DbSync:
         if len(self.stream_schema_message['key_properties']) > 0:
             try:
                 inserts, updates = self._load_file_merge(
-                    s3_key=s3_key,
                     stream=stream,
-                    columns_with_trans=columns_with_trans
+                    columns_with_trans=columns_with_trans,
+                    stage_generation_query=stage_generation_query
                 )
             except Exception as ex:
                 self.logger.error(
@@ -490,11 +474,11 @@ class DbSync:
                 raise ex
 
         # Insert only with COPY command if no primary key
+        # we will never execute COPY command as KEY columns is always mandatory
         else:
             try:
                 inserts, updates = (
                     self._load_file_copy(
-                        s3_key=s3_key,
                         stream=stream,
                         columns_with_trans=columns_with_trans
                     ),
@@ -510,10 +494,63 @@ class DbSync:
         self.logger.info(
             'Loading into %s: %s',
             self.table_name(stream, False),
-            json.dumps({'inserts': inserts, 'updates': updates, 'size_bytes': size_bytes})
+            json.dumps({'inserts': inserts, 'updates': updates})
         )
 
-    def _load_file_merge(self, s3_key, stream, columns_with_trans) -> Tuple[int, int]:
+    def use_default_schema(self):
+        return f"USE SCHEMA {self.schema_name}"
+
+    def get_export_task_id(self):
+        prefix = self.connection_config.get('prefix')
+        # result is the export task id from the prefix
+        # id is generated from base64url, so might contain '-' characters, replace it with '_'
+        result = os.path.basename(prefix).replace('-', '_')
+        
+        return result
+    
+    def get_temporary_stage_name(self):
+        """Generate snowflake stage name"""
+        export_task_id = self.get_export_task_id()
+        
+        return f"export_{export_task_id}_stage"
+    
+    def generate_temporary_external_s3_stage(self, bucket, prefix, s3_credentials, storage_integration):
+        temp_stage_name = self.get_temporary_stage_name()
+        destination_url = f"s3://{bucket}/{prefix}"
+        if s3_credentials is not None:
+            credentials_line = f"CREDENTIALS=(AWS_KEY_ID='{s3_credentials['accessKeyID']}' AWS_SECRET_KEY='{s3_credentials['secretKey']}' AWS_TOKEN='{s3_credentials.get('sessionToken', None)}')"
+        elif storage_integration is not None:
+            credentials_line = f"STORAGE_INTEGRATION={storage_integration}"
+        else:
+            raise Exception("Either 's3_credentials' or 'storage_integration' must be provided in the config.")
+        
+
+        stage_generation_query = self.file_format.formatter.create_stage_generation_sql(
+            stage_name=temp_stage_name,
+            url=destination_url,
+            credentials_line=credentials_line,
+            file_format_name=self.connection_config['file_format']
+        )
+                
+        # temporary stage will only exist during the connection cursor session
+        # only execute the generation query later during the data loading session
+        return stage_generation_query
+
+    def remove_external_s3_stage(self):
+        temp_stage_name = self.get_temporary_stage_name()
+        with self.open_connection() as connection:
+            with connection.cursor(snowflake.connector.DictCursor) as cur:
+                stage_removal_query = f"DROP STAGE IF EXISTS {temp_stage_name}"
+                
+                # need to point to the correct schema before creating the stage
+                default_schema_query = self.use_default_schema()
+                cur.execute(default_schema_query)
+
+                self.logger.debug('Removing temporary external stage: %s', stage_removal_query)
+                cur.execute(stage_removal_query)
+        return
+    
+    def _load_file_merge(self, stream, columns_with_trans, stage_generation_query) -> Tuple[int, int]:
         # MERGE does insert and update
         inserts = 0
         updates = 0
@@ -521,14 +558,37 @@ class DbSync:
             with connection.cursor(snowflake.connector.DictCursor) as cur:
                 merge_sql = self.file_format.formatter.create_merge_sql(
                     table_name=self.table_name(stream, False),
-                    stage_name=self.get_stage_name(stream),
-                    s3_key=s3_key,
+                    stage_name=self.get_temporary_stage_name(),
                     file_format_name=self.connection_config['file_format'],
                     columns=columns_with_trans,
                     pk_merge_condition=self.primary_key_merge_condition()
                 )
+                
+                # need to point to the correct schema before creating the stage
+                default_schema_query = self.use_default_schema()
+                cur.execute(default_schema_query)
+                
+                # execute the temporary stage generation query
+                self.logger.debug('Temporary external stage generation query: %s', stage_generation_query)
+                cur.execute(stage_generation_query)
+                
                 self.logger.debug('Running query: %s', merge_sql)
-                cur.execute(merge_sql)
+                try:
+                    cur.execute(merge_sql)
+                except snowflake.connector.errors.IntegrityError as e:
+                    err_msg = str(e)
+                    if 'NULL result in a non-nullable column' in err_msg:
+                        start_index = err_msg.find('column ') + len('column ')
+                        end_index = err_msg.find(' with error')
+                        non_nullable_column = err_msg[start_index: end_index]
+                        raise SymonException(f'Column "{non_nullable_column}" contains NULL values. To allow NULL values, alter table definition to drop NOT NULL constraint on column "{non_nullable_column}"', 'snowflake.clientError')
+                    raise
+                except snowflake.connector.errors.ProgrammingError as e:
+                    err_msg = str(e)
+                    if 'Insufficient privileges to operate on table' in str(e):
+                        table_name = self.table_name(stream, False, True)
+                        raise SymonException(f'INSERT/UPDATE privileges on table {table_name} are missing.', 'snowflake.clientError')
+                    raise
                 # Get number of inserted and updated records
                 results = cur.fetchall()
                 if len(results) > 0:
@@ -536,7 +596,7 @@ class DbSync:
                     updates = results[0].get('number of rows updated', 0)
         return inserts, updates
 
-    def _load_file_copy(self, s3_key, stream, columns_with_trans) -> int:
+    def _load_file_copy(self, stream, columns_with_trans) -> int:
         # COPY does insert only
         inserts = 0
         with self.open_connection() as connection:
@@ -544,7 +604,6 @@ class DbSync:
                 copy_sql = self.file_format.formatter.create_copy_sql(
                     table_name=self.table_name(stream, False),
                     stage_name=self.get_stage_name(stream),
-                    s3_key=s3_key,
                     file_format_name=self.connection_config['file_format'],
                     columns=columns_with_trans
                 )
@@ -594,7 +653,6 @@ class DbSync:
         self.logger.info("Granting USAGE privilege on '%s' schema to '%s'... %s", schema_name, grantee, query)
         self.query(query)
 
-    # pylint: disable=invalid-name
     def grant_select_on_all_tables_in_schema(self, schema_name, grantee):
         """Grant select on all tables in schema"""
         query = f"GRANT SELECT ON ALL TABLES IN SCHEMA {schema_name} TO ROLE {grantee}"
@@ -694,7 +752,8 @@ class DbSync:
                 queries = []
 
                 # Get column data types by SHOW COLUMNS
-                show_columns = f"SHOW COLUMNS IN SCHEMA {self.connection_config['dbname']}.{schema}"
+                # For Symon export, we only export one table, so we only need columns of a table, not the whole schema
+                show_columns = f"SHOW COLUMNS IN TABLE {self.connection_config['dbname']}.{schema}.{self.connection_config['stream']}"
 
                 # Convert output of SHOW COLUMNS to table and insert results into the cache COLUMNS table
                 #
@@ -831,16 +890,16 @@ class DbSync:
             try:
                 query = self.create_table_query()
                 self.logger.info('Table %s does not exist. Creating...', table_name_with_schema)
+                self.logger.debug('Create table with query %s', query)
                 self.query(query)
             except snowflake.connector.errors.ProgrammingError as e:
-                # No privilege to create table. However, this error could be raised if user doesn't have select or ownership privilege on the existing table
-                # as the table will not be returned from get_tables call. We need ownership privilege on updating existing table.
+                # No privilege to create table. However, this error could be raised if user doesn't have select privilege on the existing table
+                # as the table will not be returned from get_tables call.
                 message = str(e)
                 if 'Insufficient privileges to operate on schema' in message:
-                    raise SymonException(f'CREATE TABLE privilege on schema "{schema_name_upper}" is missing. If the table {table_name_upper} already exists in the schema "{schema_name_upper}", please ensure you have OWNERSHIP privilege on the table.', "snowflake.clientError")
-                # if table exists, ownership privilege is needed on table as we use internal table stage and perform ddl
+                    raise SymonException(f'CREATE TABLE privilege on schema "{schema_name_upper}" is missing. If the table {table_name_upper} already exists in the schema "{schema_name_upper}", please ensure you have SELECT privilege on the table.', "snowflake.clientError")
                 if f"Table '{table_name_upper[1:-1]}' already exists, but current role has no privileges on it" in message:
-                    raise SymonException(f'OWNERSHIP privilege on table {table_name_upper} is missing.', "snowflake.clientError")
+                    raise SymonException(f'SELECT privilege on table {table_name_upper} is missing.', "snowflake.clientError")
                 raise
                 
             self.grant_privilege(self.schema_name, self.grantees, self.grant_select_on_all_tables_in_schema)
@@ -850,26 +909,16 @@ class DbSync:
                 self.table_cache = self.get_table_columns(table_schemas=[self.schema_name])
         else:
             self.logger.info('Table %s exists', table_name_with_schema)
-            try:
-                self.validate_columns()
-            except snowflake.connector.errors.ProgrammingError as e:
-                if f"Insufficient privileges to operate on table" in str(e):
-                    raise SymonException(f'OWNERSHIP privilege on table {table_name_upper} is missing.', "snowflake.clientError")
-                raise
+            self.validate_columns()
 
-        self._refresh_table_pks()
+        self.validate_table_pks()
 
-    def _refresh_table_pks(self):
+    def validate_table_pks(self):
         """
-        Refresh table PK constraints by either dropping or adding PK based on changes to `key_properties` of the
-        stream schema.
-        The non-nullability of PK column is also dropped.
+        Validate table PK matches `key_properties` of the stream schema.
         """
-        table_name = self.table_name(self.stream_schema_message['stream'], False)
         current_pks = self._get_current_pks()
         new_pks = set(pk.upper() for pk in self.stream_schema_message.get('key_properties', []))
-
-        queries = []
 
         self.logger.debug('Table: %s, Current PKs: %s | New PKs: %s ',
                           self.stream_schema_message['stream'],
@@ -877,31 +926,8 @@ class DbSync:
                           new_pks
                           )
 
-        if not new_pks and current_pks:
-            self.logger.info('Table "%s" currently has PK constraint, but we need to drop it.', table_name)
-            queries.append(f'alter table {table_name} drop primary key;')
-
-        elif new_pks != current_pks:
-            self.logger.info('Changes detected in pk columns of table "%s", need to refresh PK.', table_name)
-            pk_list = ', '.join([safe_column_name(col) for col in new_pks])
-
-            if current_pks:
-                queries.append(f'alter table {table_name} drop primary key;')
-
-            queries.append(f'alter table {table_name} add primary key({pk_list});')
-
-        # For now, we don't wish to enforce non-nullability on the pk columns
-        for pk in current_pks.union(new_pks):
-            queries.append(f'alter table {table_name} alter column {safe_column_name(pk)} drop not null;')
-
-        try:
-            self.query(queries)
-        except snowflake.connector.errors.ProgrammingError as e:
-            if 'Insufficient privileges to operate on table' in str(e):
-                table_name_quote_removed = table_name.split('.')[1][1:-1]
-                # ownership privilege required for ddl
-                raise SymonException(f'OWNERSHIP privilege on table "{table_name_quote_removed.upper()}" is missing.', "snowflake.clientError")
-            raise e
+        if new_pks != current_pks:
+            raise SymonException(f'Key columns must match the primary key of the table in the Snowflake database. (Table key columns: {list(current_pks)}, Provided key columns: {list(new_pks)})', 'snowflake.clientError')
 
     def _get_current_pks(self) -> Set[str]:
         """
