@@ -37,9 +37,7 @@ def validate_config(config):
     elif auth_method == 'oauth':
         required_config_keys.append('access_token')
     elif auth_method == 'keypair':
-        required_config_keys.append('user')
-        if not config.get('private_key', None):
-            errors.append('private_key must be provided in the config for keypair authentication.')
+        required_config_keys.append(['user', 'private_key'])
     else:
         raise Exception('auth_method must be "basic", "oauth", or "keypair".')
 
