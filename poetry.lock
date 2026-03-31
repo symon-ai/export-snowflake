@@ -6,7 +6,6 @@ version = "1.5.1"
 description = "Fast ASN.1 parser and serializer with definitions for private keys, public keys, certificates, CRL, OCSP, CMS, PKCS#3, PKCS#7, PKCS#8, PKCS#12, PKCS#5, X.509 and TSP"
 optional = false
 python-versions = "*"
-groups = ["main"]
 files = [
     {file = "asn1crypto-1.5.1-py2.py3-none-any.whl", hash = "sha256:db4e40728b728508912cbb3d44f19ce188f218e9eba635821bb4b68564f8fd67"},
     {file = "asn1crypto-1.5.1.tar.gz", hash = "sha256:13ae38502be632115abf8a24cbe5f4da52e3b5231990aff31123c805306ccb9c"},
@@ -18,8 +17,6 @@ version = "1.4.1"
 description = "Atomic file writes."
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-groups = ["dev"]
-markers = "sys_platform == \"win32\""
 files = [
     {file = "atomicwrites-1.4.1.tar.gz", hash = "sha256:81b2c9071a49367a7f770170e5eec8cb66567cfbbc8c73d20ce5ca4a8d71cf11"},
 ]
@@ -327,7 +324,6 @@ version = "2.3.3"
 description = "Fast ISO8601 date time parser for Python written in C"
 optional = false
 python-versions = "*"
-groups = ["main"]
 files = [
     {file = "ciso8601-2.3.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:cf67a1d47a52dad19aaffb136de63263910dcab6e50d428f27416733ce81f183"},
     {file = "ciso8601-2.3.3-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:67316d2a2d278fad3d569771b032e9bd8484c8aab842e1a2524f6433260cf9ac"},
@@ -402,8 +398,6 @@ version = "0.4.6"
 description = "Cross-platform colored terminal text."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
-groups = ["dev"]
-markers = "sys_platform == \"win32\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
@@ -526,7 +520,7 @@ files = [
 ]
 
 [package.extras]
-toml = ["tomli ; python_full_version <= \"3.11.0a6\""]
+toml = ["tomli"]
 
 [[package]]
 name = "cryptography"
@@ -633,7 +627,6 @@ version = "0.5.1"
 description = "A port of Ruby on Rails inflector to Python"
 optional = false
 python-versions = ">=3.5"
-groups = ["main"]
 files = [
     {file = "inflection-0.5.1-py2.py3-none-any.whl", hash = "sha256:f38b2b640938a4f35ade69ac3d053042959b62a0f1076a5bbaa1b9526605a8a2"},
     {file = "inflection-0.5.1.tar.gz", hash = "sha256:1a29730d366e996aaacffb2f1f1cb9593dc38e2ddd30c91250c6dde09ea9b417"},
@@ -681,7 +674,6 @@ version = "2.6.0"
 description = "An implementation of JSON Schema validation for Python"
 optional = false
 python-versions = "*"
-groups = ["main"]
 files = [
     {file = "jsonschema-2.6.0-py2.py3-none-any.whl", hash = "sha256:000e68abd33c972a5248544925a0cae7d1125f9bf6c58280d37546b946769a08"},
     {file = "jsonschema-2.6.0.tar.gz", hash = "sha256:6ff5f3180870836cae40f06fa10419f557208175f13ad7bc26caa77beb1f6e02"},
@@ -919,7 +911,6 @@ version = "1.11.0"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-groups = ["dev"]
 files = [
     {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
     {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
@@ -981,7 +972,6 @@ version = "7.1.1"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.7"
-groups = ["dev"]
 files = [
     {file = "pytest-7.1.1-py3-none-any.whl", hash = "sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea"},
     {file = "pytest-7.1.1.tar.gz", hash = "sha256:841132caef6b1ad17a9afde46dc4f6cfa59a05f9555aae5151f73bdf2820ca63"},
@@ -1026,7 +1016,6 @@ version = "1.8.0"
 description = "Tesults plugin for pytest"
 optional = false
 python-versions = ">=2.7"
-groups = ["dev"]
 files = [
     {file = "pytest_tesults-1.8.0-py3-none-any.whl", hash = "sha256:4dad248649cd30fef7e98f10bff08ae628d01fa9df2186249a9f42a8bef890ed"},
     {file = "pytest_tesults-1.8.0.tar.gz", hash = "sha256:f14dca219c9f7b3e1c7f890a0cae177867152ff83e70f18a6a321af7871142b6"},
@@ -1042,7 +1031,6 @@ version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
-groups = ["main", "dev"]
 files = [
     {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
     {file = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"},
@@ -1057,7 +1045,6 @@ version = "2025.2"
 description = "World timezone definitions, modern and historical"
 optional = false
 python-versions = "*"
-groups = ["main"]
 files = [
     {file = "pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00"},
     {file = "pytz-2025.2.tar.gz", hash = "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3"},
@@ -1323,7 +1310,6 @@ version = "2.4.0"
 description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
 optional = false
 python-versions = "*"
-groups = ["main"]
 files = [
     {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
     {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
@@ -1335,7 +1321,6 @@ version = "1.2.2"
 description = "Tesults API library"
 optional = false
 python-versions = "*"
-groups = ["dev"]
 files = [
     {file = "tesults-1.2.2-py2.py3-none-any.whl", hash = "sha256:588b80c30952a84bec5047d492456529c625ec3ea418bff7678aa023982f0c89"},
     {file = "tesults-1.2.2.tar.gz", hash = "sha256:a4c65494f4821cc156e5c905de7d729d2b5c1c8e8eb6e2e73cb189bb0ca686a0"},
