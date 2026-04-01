@@ -25,7 +25,6 @@ pandas = {version = "==2.3.3", markers = "python_full_version >= \"3.13.0\" and 
 platformdirs = {version = "==4.5.1", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 pycparser = {version = "==3.0", markers = "python_full_version >= \"3.13.0\" and platform_python_implementation != \"PyPy\" and python_full_version < \"4.0.0\" and implementation_name != \"PyPy\""}
 pyjwt = {version = "==2.11.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
-pyopenssl = {version = "==25.3.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 python-dateutil = {version = "==2.9.0.post0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 pytz = {version = "==2025.2", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 requests = {version = "==2.32.5", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
@@ -33,12 +32,13 @@ s3transfer = {version = "==0.16.0", markers = "python_full_version >= \"3.13.0\"
 simplejson = {version = "==3.20.2", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 singer-python = {version = "==6.3.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 six = {version = "==1.17.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
-snowflake-connector-python = {version = "==4.2.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 sortedcontainers = {version = "==2.4.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 tomlkit = {version = "==0.14.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 typing-extensions = {version = "==4.15.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 tzdata = {version = "==2025.3", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 urllib3 = {version = "==2.6.3", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
+snowflake-connector-python = "*"
+pyopenssl = "*"
 
 [dev-packages]
 
