@@ -28,7 +28,7 @@ pyjwt = {version = "==2.11.0", markers = "python_full_version >= \"3.13.0\" and 
 pyopenssl = {version = "==25.3.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 python-dateutil = {version = "==2.9.0.post0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 pytz = {version = "==2025.2", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
-requests = {version = "==2.32.5", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
+requests = {version = "==2.33.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 s3transfer = {version = "==0.16.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 simplejson = {version = "==3.20.2", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
 singer-python = {version = "==6.3.0", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
