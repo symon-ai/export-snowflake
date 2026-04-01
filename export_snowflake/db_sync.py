@@ -5,6 +5,7 @@ import re
 import time
 import os
 
+from cryptography.hazmat.primitives import serialization
 from typing import List, Dict, Union, Tuple, Set
 from singer import get_logger
 from export_snowflake import flattening
@@ -35,8 +36,10 @@ def validate_config(config):
         required_config_keys.extend(['user', 'password'])
     elif auth_method == 'oauth':
         required_config_keys.append('access_token')
+    elif auth_method == 'keypair':
+        required_config_keys.extend(['user', 'private_key'])
     else:
-        raise Exception('auth_method must be either "basic" or "oauth".')
+        raise Exception('auth_method must be "basic", "oauth", or "keypair".')
 
     # Check if mandatory keys exist
     for k in required_config_keys:
@@ -288,9 +291,19 @@ class DbSync:
                                                 table=self.table_name(stream, False, True))
                 }
             }
-            if self.connection_config.get('auth_method') == 'basic':
+            auth_method = self.connection_config.get('auth_method')
+            if auth_method == 'basic':
                 config['user'] = self.connection_config['user']
                 config['password'] = self.connection_config['password']
+            elif auth_method == 'keypair':
+                config['user'] = self.connection_config['user']
+                pem_key = self.connection_config['private_key'].encode('utf-8')
+                private_key = serialization.load_pem_private_key(pem_key, password=None)
+                config['private_key'] = private_key.private_bytes(
+                    encoding=serialization.Encoding.DER,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption()
+                )
             else:
                 config['authenticator'] = 'oauth'
                 config['token'] = self.connection_config['access_token']
