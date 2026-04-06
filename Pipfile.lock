@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "UPDATED_FOR_CVE_2026_27459_FIX"
+            "sha256": "UPDATED_FOR_CVE_2026_25645_AND_CVE_2026_27459_FIX"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -629,19 +629,19 @@
         },
         "pytz": {
             "hashes": [
-                "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3",
-                "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00"
+                "sha256:f2fd16142fda348286a75e1a524be810bb05d444e5a081f37f7affc635035f7a",
+                "sha256:3378dde6a0c3d26719182142c56e60c7f9af7e968076f31aae569d72a0358ee1"
             ],
             "markers": "python_full_version >= '3.13.0' and python_full_version < '4.0.0'",
-            "version": "==2025.2"
+            "version": "==2026.1.post1"
         },
         "requests": {
             "hashes": [
-                "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6",
-                "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf"
+                "sha256:4e6d1ef462f3626a1f0a0a9c42dd93c63bad33f9f1c1937509b8c5c8718ab56a",
+                "sha256:18817f8c57c6263968bc123d237e3b8b08ac046f5456bd1e307ee8f4250d3517"
             ],
             "markers": "python_full_version >= '3.13.0' and python_full_version < '4.0.0'",
-            "version": "==2.32.5"
+            "version": "==2.33.1"
         },
         "s3transfer": {
             "hashes": [
