@@ -8,7 +8,7 @@ authors = ["Wise"]
 [tool.poetry.dependencies]
 python = "^3.13.0"
 singer-python = "6.3.0"
-snowflake-connector-python = "^4.2.0"
+snowflake-connector-python = "^4.4.0"
 pandas = "2.3.3"
 inflection = "0.5.1"
 joblib = "^1.5.3"
