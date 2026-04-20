@@ -11,7 +11,7 @@ class BaseUploadClient(ABC):
     """
     def __init__(self, connection_config):
         self.connection_config = connection_config
-        self.logger = get_logger('export_snowflake')
+        self.logger = get_logger()
 
     @abstractmethod
     def upload_file(self, file: str, stream: str, temp_dir: str = None) -> None:

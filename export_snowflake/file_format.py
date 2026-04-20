@@ -20,7 +20,6 @@ class FileFormatTypes(str, Enum):
         return list(map(lambda c: c.value, FileFormatTypes))
 
 
-# pylint: disable=too-few-public-methods
 class FileFormat:
     """File Format class"""
 

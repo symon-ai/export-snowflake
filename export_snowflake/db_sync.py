@@ -6,6 +6,7 @@ import time
 import os
 import requests
 
+from cryptography.hazmat.primitives import serialization
 from typing import List, Dict, Union, Tuple, Set
 from singer import get_logger
 from export_snowflake import flattening
@@ -36,8 +37,10 @@ def validate_config(config):
         required_config_keys.extend(['user', 'password'])
     elif auth_method == 'oauth':
         required_config_keys.append('access_token')
+    elif auth_method == 'keypair':
+        required_config_keys.extend(['user', 'private_key'])
     else:
-        raise Exception('auth_method must be either "basic" or "oauth".')
+        raise Exception('auth_method must be "basic", "oauth", or "keypair".')
 
     # Check if mandatory keys exist
     for k in required_config_keys:
@@ -119,7 +122,6 @@ def primary_column_names(stream_schema_message):
     return [safe_column_name(p) for p in stream_schema_message['key_properties']]
 
 
-# pylint: disable=invalid-name
 def create_query_tag(query_tag_pattern: str, database: str = None, schema: str = None, table: str = None) -> str:
     """
     Generate a string to tag executed queries in Snowflake.
@@ -153,8 +155,6 @@ def create_query_tag(query_tag_pattern: str, database: str = None, schema: str =
 
     return query_tag
 
-
-# pylint: disable=too-many-public-methods,too-many-instance-attributes
 class DbSync:
     """DbSync class"""
 
@@ -182,7 +182,7 @@ class DbSync:
         self.table_cache = table_cache
 
         # logger to be used across the class's methods
-        self.logger = get_logger('export_snowflake')
+        self.logger = get_logger()
 
         # Validate connection configuration
         config_errors = validate_config(connection_config)
@@ -208,7 +208,6 @@ class DbSync:
                               "Use named stages with Parquet file format or table stages with CSV files format")
             sys.exit(1)
 
-        # Init stream schema pylint: disable=line-too-long
         if self.stream_schema_message is not None:
             #  Define target schema name.
             #  --------------------------
@@ -332,9 +331,19 @@ class DbSync:
                                                 table=self.table_name(stream, False, True))
                 }
             }
-            if self.connection_config.get('auth_method') == 'basic':
+            auth_method = self.connection_config.get('auth_method')
+            if auth_method == 'basic':
                 config['user'] = self.connection_config['user']
                 config['password'] = self.connection_config['password']
+            elif auth_method == 'keypair':
+                config['user'] = self.connection_config['user']
+                pem_key = self.connection_config['private_key'].encode('utf-8')
+                private_key = serialization.load_pem_private_key(pem_key, password=None)
+                config['private_key'] = private_key.private_bytes(
+                    encoding=serialization.Encoding.DER,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption()
+                )
             else:
                 config['authenticator'] = 'oauth'
                 config['token'] = self.connection_config['access_token']
@@ -373,7 +382,6 @@ class DbSync:
 
                 qid = None
 
-                # pylint: disable=invalid-name
                 for q in queries:
 
                     # update the LAST_QID
@@ -698,7 +706,6 @@ class DbSync:
         self.logger.info("Granting USAGE privilege on '%s' schema to '%s'... %s", schema_name, grantee, query)
         self.query(query)
 
-    # pylint: disable=invalid-name
     def grant_select_on_all_tables_in_schema(self, schema_name, grantee):
         """Grant select on all tables in schema"""
         query = f"GRANT SELECT ON ALL TABLES IN SCHEMA {schema_name} TO ROLE {grantee}"
