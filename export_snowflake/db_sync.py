@@ -270,6 +270,9 @@ class DbSync:
         else:
             self.upload_client = SnowflakeUploadClient(connection_config, self)
 
+    # TODO: Remove before merging -- forces token refresh on every connection for testing
+    FORCE_TOKEN_REFRESH_TEST = True
+
     def _can_refresh_oauth_token(self):
         """Check whether we have the credentials needed to refresh the OAuth access token."""
         return (
@@ -309,6 +312,10 @@ class DbSync:
             stream = self.stream_schema_message['stream']
         
         if self._can_refresh_oauth_token():
+            if self.FORCE_TOKEN_REFRESH_TEST:
+                self.logger.info('[TEST] Invalidating access_token to force refresh path')
+                self.connection_config['access_token'] = 'INVALIDATED_FOR_TEST'
+
             try:
                 self._refresh_access_token()
             except Exception as e:
