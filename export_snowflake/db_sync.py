@@ -4,6 +4,7 @@ import snowflake.connector
 import re
 import time
 import os
+import requests
 
 from typing import List, Dict, Union, Tuple, Set
 from singer import get_logger
@@ -270,12 +271,51 @@ class DbSync:
         else:
             self.upload_client = SnowflakeUploadClient(connection_config, self)
 
+    def _can_refresh_oauth_token(self):
+        """Check whether we have the credentials needed to refresh the OAuth access token."""
+        return (
+            self.connection_config.get('auth_method') == 'oauth'
+            and self.connection_config.get('refresh_token')
+            and self.connection_config.get('client_id')
+            and self.connection_config.get('client_secret')
+        )
+
+    def _refresh_access_token(self):
+        """Refresh the Snowflake OAuth access token using the refresh token.
+
+        Updates connection_config in place so subsequent open_connection calls
+        use the new token automatically.
+        """
+        account = self.connection_config['account']
+        url = f"https://{account}.snowflakecomputing.com/oauth/token-request"
+
+        auth = (self.connection_config['client_id'], self.connection_config['client_secret'])
+        response = requests.post(url, data={
+            'grant_type': 'refresh_token',
+            'refresh_token': self.connection_config['refresh_token']
+        }, auth=auth, timeout=30)
+        response.raise_for_status()
+
+        tokens = response.json()
+        self.connection_config['access_token'] = tokens['access_token']
+        if tokens.get('refresh_token'):
+            self.connection_config['refresh_token'] = tokens['refresh_token']
+
+        self.logger.info('Successfully refreshed Snowflake OAuth access token')
+
     def open_connection(self):
         """Open snowflake connection"""
         stream = None
         if self.stream_schema_message:
             stream = self.stream_schema_message['stream']
         
+        if self._can_refresh_oauth_token():
+            try:
+                self._refresh_access_token()
+            except Exception as e:
+                self.logger.warning('Failed to proactively refresh OAuth token, '
+                                    'will attempt connection with existing token: %s', e)
+
         try:
             config = {
                 'account':self.connection_config['account'],
