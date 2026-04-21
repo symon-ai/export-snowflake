@@ -322,6 +322,7 @@ class DbSync:
                 'warehouse':self.connection_config['warehouse'],
                 'role':self.connection_config.get('role', None),
                 'autocommit':True,
+                'client_session_keep_alive':self.connection_config.get('auth_method') == 'oauth',
                 'session_parameters':{
                     # Quoted identifiers should be case sensitive
                     'QUOTED_IDENTIFIERS_IGNORE_CASE': 'FALSE',
