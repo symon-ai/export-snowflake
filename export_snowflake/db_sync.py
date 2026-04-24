@@ -178,6 +178,7 @@ class DbSync:
                                     purposes.
         """
         self.connection_config = connection_config
+        self._token_expires_at = 0
         self.stream_schema_message = stream_schema_message
         self.table_cache = table_cache
 
@@ -302,17 +303,21 @@ class DbSync:
 
         self.logger.info('Successfully refreshed Snowflake OAuth access token')
 
+    def _is_token_expired(self):
+        """Check if the OAuth access token is expired or about to expire."""
+        return time.time() >= self._token_expires_at - 60
+
     def open_connection(self):
         """Open snowflake connection"""
         stream = None
         if self.stream_schema_message:
             stream = self.stream_schema_message['stream']
         
-        if self._can_refresh_oauth_token():
+        if self._can_refresh_oauth_token() and self._is_token_expired():
             try:
                 self._refresh_access_token()
             except Exception as e:
-                self.logger.warning('Failed to proactively refresh OAuth token, '
+                self.logger.warning('Failed to refresh OAuth token, '
                                     'will attempt connection with existing token: %s', e)
 
         try:
