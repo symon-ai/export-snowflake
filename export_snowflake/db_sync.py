@@ -314,6 +314,7 @@ class DbSync:
             stream = self.stream_schema_message['stream']
         
         if self._can_refresh_oauth_token() and self._is_token_expired():
+            self.logger.info('OAuth access token expired or about to expire, refreshing token')
             try:
                 self._refresh_access_token()
             except Exception as e:
