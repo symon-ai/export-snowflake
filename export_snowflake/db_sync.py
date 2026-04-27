@@ -298,8 +298,7 @@ class DbSync:
 
         tokens = response.json()
         self.connection_config['access_token'] = tokens['access_token']
-        if tokens.get('refresh_token'):
-            self.connection_config['refresh_token'] = tokens['refresh_token']
+        self._token_expires_at = time.time() + tokens.get('expires_in', 600)
 
         self.logger.info('Successfully refreshed Snowflake OAuth access token')
 
