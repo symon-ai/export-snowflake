@@ -38,7 +38,7 @@ sortedcontainers = "==2.4.0"
 tomlkit = "==0.14.0"
 typing-extensions = "==4.15.0"
 tzdata = "==2025.3"
-urllib3 = "==2.6.3"
+urllib3 = ">=2.7.0"
 
 [dev-packages]
 
