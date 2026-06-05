@@ -17,6 +17,22 @@ from export_snowflake.exceptions import TooManyRecordsException, SymonException
 from export_snowflake.upload_clients.s3_upload_client import S3UploadClient
 from export_snowflake.upload_clients.snowflake_upload_client import SnowflakeUploadClient
 
+STORAGE_INTEGRATION_ASSUME_ROLE_ERROR_MESSAGE = (
+    'Snowflake could not assume the IAM role for this connection\'s storage integration. '
+    'Edit the Snowflake connection, run DESCRIBE INTEGRATION on your storage integration in Snowflake, '
+    'and update the Principal and External ID fields to match STORAGE_AWS_IAM_USER_ARN and '
+    'STORAGE_AWS_EXTERNAL_ID. Ensure STORAGE_AWS_ROLE_ARN in Snowflake matches the IAM role ARN '
+    'shown in the connection setup wizard.'
+)
+
+
+def raise_for_storage_integration_assume_role_error(err_msg: str) -> None:
+    """Map Snowflake storage-integration IAM AssumeRole failures to a client error."""
+    if 'Error assuming AWS_ROLE' in err_msg or (
+        'sts:AssumeRole' in err_msg and 'is not authorized to perform' in err_msg
+    ):
+        raise SymonException(STORAGE_INTEGRATION_ASSUME_ROLE_ERROR_MESSAGE, 'snowflake.clientError')
+
 
 def validate_config(config):
     """Validate configuration"""
@@ -629,8 +645,12 @@ class DbSync:
                 
                 # execute the temporary stage generation query
                 self.logger.debug('Temporary external stage generation query: %s', stage_generation_query)
-                cur.execute(stage_generation_query)
-                
+                try:
+                    cur.execute(stage_generation_query)
+                except snowflake.connector.errors.ProgrammingError as e:
+                    raise_for_storage_integration_assume_role_error(str(e))
+                    raise
+
                 self.logger.debug('Running query: %s', merge_sql)
                 try:
                     cur.execute(merge_sql)
@@ -644,7 +664,8 @@ class DbSync:
                     raise
                 except snowflake.connector.errors.ProgrammingError as e:
                     err_msg = str(e)
-                    if 'Insufficient privileges to operate on table' in str(e):
+                    raise_for_storage_integration_assume_role_error(err_msg)
+                    if 'Insufficient privileges to operate on table' in err_msg:
                         table_name = self.table_name(stream, False, True)
                         raise SymonException(f'INSERT/UPDATE privileges on table {table_name} are missing.', 'snowflake.clientError')
                     raise

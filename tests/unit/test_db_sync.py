@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch, call
 
 from export_snowflake import db_sync
-from export_snowflake.exceptions import PrimaryKeyNotFoundException
+from export_snowflake.exceptions import PrimaryKeyNotFoundException, SymonException
 
 
 class TestDBSync(unittest.TestCase):
@@ -639,3 +639,19 @@ class TestDBSync(unittest.TestCase):
         #     call(['alter table dummy-schema."TABLE1" add primary key("ID");',
         #           'alter table dummy-schema."TABLE1" alter column "ID" drop not null;'])
         # ])
+
+    def test_raise_for_storage_integration_assume_role_error_wp_31288(self):
+        assume_role_msg = (
+            '003167 (42601): Error assuming AWS_ROLE:\n'
+            'User: arn:aws:iam::486044735905:user/75pg-s-c1ss4835 is not authorized to perform: '
+            'sts:AssumeRole on resource: arn:aws:iam::541224180711:role/external/org/snowflake/storage-integration-a4'
+        )
+        with self.assertRaises(SymonException) as ctx:
+            db_sync.raise_for_storage_integration_assume_role_error(assume_role_msg)
+        self.assertEqual(ctx.exception.code, 'snowflake.clientError')
+        self.assertIn('storage integration', str(ctx.exception))
+
+        with self.assertRaises(SymonException):
+            db_sync.raise_for_storage_integration_assume_role_error('Error assuming AWS_ROLE: denied')
+
+        db_sync.raise_for_storage_integration_assume_role_error('some other programming error')
