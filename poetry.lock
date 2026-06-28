@@ -902,9 +902,6 @@ files = [
 
 [package.extras]
 crypto = ["cryptography (>=3.4.0)"]
-dev = ["coverage[toml] (==7.10.7)", "cryptography (>=3.4.0)", "pre-commit", "pytest (>=8.4.2,<9.0.0)", "sphinx", "sphinx-rtd-theme", "zope.interface"]
-docs = ["sphinx", "sphinx-rtd-theme", "zope.interface"]
-tests = ["coverage[toml] (==7.10.7)", "pytest (>=8.4.2,<9.0.0)"]
 
 [[package]]
 name = "pyopenssl"
@@ -1331,4 +1328,4 @@ zstd = ["backports-zstd (>=1.0.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.13.0"
-content-hash = "477c1036def3e13dabcb77a6a1c33c70e85ffad234c235dce0ab2b049346c8e2"
+content-hash = "d4ae7c79d584b32ba661f3c6a66599cf06a6a8ac343fd31784251c78abd129b7"
