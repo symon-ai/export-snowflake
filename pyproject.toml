@@ -15,6 +15,7 @@ joblib = "^1.5.3"
 boto3 = "^1.42.19"
 requests = "^2.33.1"
 urllib3 = "^2.7.0"
+pyjwt = ">=2.13.0,<3.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "9.0.3"
