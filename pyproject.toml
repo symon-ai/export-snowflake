@@ -20,6 +20,8 @@ pytest-cov = "*"
 tesults = "*"
 pytest-tesults = "*"
 
+# sub-dependency override group for security purposes
+# add to this group with poetry add "package@version" -G security-overrides
 [tool.poetry.group.security-overrides.dependencies]
 joblib = "^1.5.3"
 urllib3 = "^2.7.0"
