@@ -1,3 +1,10 @@
+4.10.1 (2026-07-26)
+-------------------
+
+*Fixes*
+- Remediate Veracode CWE-73 (path manipulation) finding in `tests/unit/test_export_snowflake.py` by resolving fixture files through a validated, basename-only helper against a fixed resources directory (WP-32454).
+
+
 2.2.0 (2022-05-12)
 -------------------
 
