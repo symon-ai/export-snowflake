@@ -184,3 +184,30 @@ class TestexportSnowflake(unittest.TestCase):
         #     buf.getvalue().strip(),
         #     '{"bookmarks": {"tap_mysql_test-test_simple_table": {"replication_key": "id", '
         #     '"replication_key_value": 100, "version": 1}}}')
+
+
+class TestValidateOutputFilePath(unittest.TestCase):
+    """WP-32454: CWE-73 path-manipulation guard for user-supplied output file paths."""
+
+    def test_legitimate_relative_path_is_accepted(self):
+        """A plain filename inside the base dir resolves and is returned."""
+        base_dir = os.path.dirname(__file__)
+        result = export_snowflake.validate_output_file_path('error.json', base_dir=base_dir)
+        self.assertEqual(result, os.path.realpath(os.path.join(base_dir, 'error.json')))
+
+    def test_traversal_path_is_rejected(self):
+        """A `..` traversal escaping the base dir must raise ValueError."""
+        base_dir = os.path.dirname(__file__)
+        with self.assertRaises(ValueError):
+            export_snowflake.validate_output_file_path('../../../../etc/passwd', base_dir=base_dir)
+
+    def test_absolute_path_outside_base_is_rejected(self):
+        """An absolute path outside the base dir must raise ValueError."""
+        base_dir = os.path.dirname(__file__)
+        with self.assertRaises(ValueError):
+            export_snowflake.validate_output_file_path('/etc/passwd', base_dir=base_dir)
+
+    def test_empty_path_is_rejected(self):
+        """An empty / non-string path must raise ValueError."""
+        with self.assertRaises(ValueError):
+            export_snowflake.validate_output_file_path('', base_dir=os.path.dirname(__file__))
