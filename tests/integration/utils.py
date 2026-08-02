@@ -55,8 +55,20 @@ def get_test_config():
 
 
 def get_test_tap_lines(filename):
+    # Constrain the requested resource to the sibling `resources/` directory only,
+    # guarding against path manipulation (CWE-73). Reject anything that is not a
+    # bare filename (absolute paths, directory components, `..` traversal) and then
+    # confirm the resolved real path stays inside the resources directory.
+    if filename != os.path.basename(filename):
+        raise ValueError('Invalid resource filename: {}'.format(filename))
+
+    resources_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), 'resources'))
+    resource_path = os.path.realpath(os.path.join(resources_dir, filename))
+    if os.path.dirname(resource_path) != resources_dir:
+        raise ValueError('Invalid resource filename: {}'.format(filename))
+
     lines = []
-    with open('{}/resources/{}'.format(os.path.dirname(__file__), filename)) as tap_stdout:
+    with open(resource_path) as tap_stdout:
         for line in tap_stdout.readlines():
             lines.append(line)
 
