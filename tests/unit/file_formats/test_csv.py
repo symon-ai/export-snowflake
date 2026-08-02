@@ -10,6 +10,22 @@ def _mock_record_to_csv_line(record, schema, data_flattening_max_level=0):
     return record
 
 
+def _validated_temp_path(path):
+    """Centralized validation routine for temp-file paths before they are opened.
+
+    Guards against CWE-73 path manipulation: the resolved (symlink- and
+    ``..``-normalized) path must stay inside the system temp directory,
+    otherwise a ``ValueError`` is raised. Returns the normalized path so
+    callers pass a constrained value into ``open()`` / ``gzip.open()``
+    instead of tainted input.
+    """
+    resolved = os.path.realpath(path)
+    temp_root = os.path.realpath(tempfile.gettempdir())
+    if os.path.commonpath([resolved, temp_root]) != temp_root:
+        raise ValueError(f'Refusing to open path outside temp directory: {path!r}')
+    return resolved
+
+
 class TestCsv(unittest.TestCase):
 
     def setUp(self):
@@ -25,15 +41,16 @@ class TestCsv(unittest.TestCase):
 
         # Write uncompressed CSV file
         csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(csv_file.name, 'wb') as f:
+        csv_path = _validated_temp_path(csv_file.name)
+        with open(csv_path, 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
         # Read and validate uncompressed CSV file
-        with open(csv_file.name, 'rt') as f:
+        with open(csv_path, 'rt') as f:
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
-        os.remove(csv_file.name)
+        os.remove(csv_path)
 
     def test_write_records_to_compressed_file(self):
         records = {
@@ -44,15 +61,29 @@ class TestCsv(unittest.TestCase):
 
         # Write gzip compressed CSV file
         csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with gzip.open(csv_file.name, 'wb') as f:
+        csv_path = _validated_temp_path(csv_file.name)
+        with gzip.open(csv_path, 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
         # Read and validate gzip compressed CSV file
-        with gzip.open(csv_file.name, 'rt') as f:
+        with gzip.open(csv_path, 'rt') as f:
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
-        os.remove(csv_file.name)
+        os.remove(csv_path)
+
+    def test_validated_temp_path_accepts_temp_file(self):
+        csv_file = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            self.assertEqual(_validated_temp_path(csv_file.name),
+                             os.path.realpath(csv_file.name))
+        finally:
+            os.remove(csv_file.name)
+
+    def test_validated_temp_path_rejects_traversal(self):
+        traversal = os.path.join(tempfile.gettempdir(), '..', '..', 'etc', 'passwd')
+        with self.assertRaises(ValueError):
+            _validated_temp_path(traversal)
 
     def test_record_to_csv_line(self):
         record = {

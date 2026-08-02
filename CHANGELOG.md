@@ -1,3 +1,10 @@
+4.10.1 (2026-08-02)
+-------------------
+
+*Fixes*
+- WP-33349: Remediate Veracode CWE-73 path manipulation finding in `tests/unit/file_formats/test_csv.py` by routing temp-file paths through a centralized validation routine (`_validated_temp_path`) that normalizes the path and rejects anything resolving outside the system temp directory before it is passed to `open()` / `gzip.open()`.
+
+
 2.2.0 (2022-05-12)
 -------------------
 
