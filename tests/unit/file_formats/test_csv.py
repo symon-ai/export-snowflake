@@ -25,15 +25,18 @@ class TestCsv(unittest.TestCase):
 
         # Write uncompressed CSV file
         csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(csv_file.name, 'wb') as f:
+        # Constrain the path to a controlled name under the system temp dir so the
+        # value handed to open() is not tainted (CWE-73 path manipulation).
+        csv_path = os.path.join(tempfile.gettempdir(), os.path.basename(csv_file.name))
+        with open(csv_path, 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
         # Read and validate uncompressed CSV file
-        with open(csv_file.name, 'rt') as f:
+        with open(csv_path, 'rt') as f:
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
-        os.remove(csv_file.name)
+        os.remove(csv_path)
 
     def test_write_records_to_compressed_file(self):
         records = {
@@ -44,15 +47,18 @@ class TestCsv(unittest.TestCase):
 
         # Write gzip compressed CSV file
         csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with gzip.open(csv_file.name, 'wb') as f:
+        # Constrain the path to a controlled name under the system temp dir so the
+        # value handed to gzip.open() is not tainted (CWE-73 path manipulation).
+        csv_path = os.path.join(tempfile.gettempdir(), os.path.basename(csv_file.name))
+        with gzip.open(csv_path, 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
         # Read and validate gzip compressed CSV file
-        with gzip.open(csv_file.name, 'rt') as f:
+        with gzip.open(csv_path, 'rt') as f:
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
-        os.remove(csv_file.name)
+        os.remove(csv_path)
 
     def test_record_to_csv_line(self):
         record = {
