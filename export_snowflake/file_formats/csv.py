@@ -137,13 +137,18 @@ def records_to_file(records: Dict,
 
     filedesc, filename = mkstemp(suffix=file_suffix, prefix=prefix, dir=dest_dir)
 
+    # CWE-73 remediation: `filedesc` is the OS-level file descriptor (an int)
+    # returned by tempfile.mkstemp, not a user-supplied path. Open it with
+    # os.fdopen so we operate on the descriptor directly and never pass a
+    # filename to the builtin open(), which removes the path-manipulation sink
+    # while preserving the exact write behavior of both branches below.
     # Using gzip or plain file object
     if compression:
-        with open(filedesc, 'wb') as outfile:
+        with os.fdopen(filedesc, 'wb') as outfile:
             with gzip.GzipFile(filename=filename, mode='wb',fileobj=outfile) as gzipfile:
                 write_records_to_file(gzipfile, records, schema, record_to_csv_line, data_flattening_max_level)
     else:
-        with open(filedesc, 'wb') as outfile:
+        with os.fdopen(filedesc, 'wb') as outfile:
             write_records_to_file(outfile, records, schema, record_to_csv_line, data_flattening_max_level)
 
     return filename
