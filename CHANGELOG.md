@@ -1,3 +1,10 @@
+4.10.1 (2026-08-02)
+-------------------
+
+*Fixes*
+- WP-33345: Remediate Veracode CWE-73 (path manipulation) finding in `tests/unit/file_formats/test_csv.py` by validating/normalizing the temp-file path (`_safe_temp_path`) before passing it to `open()`/`gzip.open()`, asserting it stays within the system temp directory.
+
+
 2.2.0 (2022-05-12)
 -------------------
 
