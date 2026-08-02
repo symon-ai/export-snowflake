@@ -1,3 +1,10 @@
+4.10.2 (2026-08-02)
+-------------------
+
+*Fixes*
+- WP-33361: Remediate Veracode CWE-73 (path manipulation) in `file_formats/csv.py`. The gzip header `filename` field now embeds only the sanitized basename (`os.path.basename(...)`) instead of the full temp-file path derived from the caller-supplied `dest_dir`. The on-disk write location is unchanged.
+
+
 2.2.0 (2022-05-12)
 -------------------
 

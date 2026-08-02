@@ -140,7 +140,10 @@ def records_to_file(records: Dict,
     # Using gzip or plain file object
     if compression:
         with open(filedesc, 'wb') as outfile:
-            with gzip.GzipFile(filename=filename, mode='wb',fileobj=outfile) as gzipfile:
+            # WP-33361 / CWE-73: the gzip header `filename` field is only a name label,
+            # not a write target (bytes go to `fileobj`). Pass only the sanitized
+            # basename so no caller-supplied path (dest_dir) is embedded in the header.
+            with gzip.GzipFile(filename=os.path.basename(filename), mode='wb', fileobj=outfile) as gzipfile:
                 write_records_to_file(gzipfile, records, schema, record_to_csv_line, data_flattening_max_level)
     else:
         with open(filedesc, 'wb') as outfile:

@@ -1,4 +1,5 @@
 import unittest
+import unittest.mock
 import os
 import gzip
 import tempfile
@@ -53,6 +54,41 @@ class TestCsv(unittest.TestCase):
                                              'data5,data6,data7,data8\n'])
 
         os.remove(csv_file.name)
+
+    def test_records_to_file_gzip_filename_is_sanitized_basename(self):
+        # WP-33361 / CWE-73: the caller-supplied dest_dir flows into the temp-file
+        # path and must not reach the gzip.GzipFile(filename=...) sink as a
+        # path-bearing value. Assert the argument handed to the constructor is a
+        # bare basename with no directory component (neutralizes the tainted flow).
+        records = {
+            'pk_1': 'data1,data2,data3,data4',
+            'pk_2': 'data5,data6,data7,data8'
+        }
+        schema = {}
+
+        captured = {}
+        real_gzipfile = gzip.GzipFile
+
+        def _capturing_gzipfile(*args, **kwargs):
+            captured['filename'] = kwargs.get('filename', args[0] if args else None)
+            return real_gzipfile(*args, **kwargs)
+
+        dest_dir = tempfile.mkdtemp()
+        with unittest.mock.patch.object(csv.gzip, 'GzipFile',
+                                        side_effect=_capturing_gzipfile):
+            generated = csv.records_to_file(records, schema,
+                                            compression=True, dest_dir=dest_dir)
+        try:
+            passed = captured['filename']
+            self.assertIsNotNone(passed)
+            # Must be a bare basename: no directory separators, no dest_dir leak.
+            self.assertNotIn('/', passed)
+            self.assertNotIn(os.sep, passed)
+            self.assertNotIn(dest_dir, passed)
+            self.assertEqual(passed, os.path.basename(passed))
+        finally:
+            os.remove(generated)
+            os.rmdir(dest_dir)
 
     def test_record_to_csv_line(self):
         record = {
