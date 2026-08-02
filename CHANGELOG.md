@@ -1,3 +1,9 @@
+4.11.0 (2026-08-02)
+-------------------
+
+*Fixes*
+- WP-33367: Remediate CWE-73 path traversal in `main()` by validating and canonically resolving the `--config` path against an allowed base directory before opening it.
+
 2.2.0 (2022-05-12)
 -------------------
 
