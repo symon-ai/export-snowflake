@@ -1,3 +1,10 @@
+4.10.1 (2026-08-02)
+-------------------
+
+*Fixes*
+- Remediate Veracode CWE-73 (path manipulation) finding in `export_snowflake/file_formats/csv.py` `records_to_file` by opening the `mkstemp` file descriptor with `os.fdopen` instead of passing it to the builtin `open()`. Behavior is unchanged for both the compression and non-compression branches.
+
+
 2.2.0 (2022-05-12)
 -------------------
 
