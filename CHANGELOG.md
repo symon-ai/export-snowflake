@@ -1,3 +1,10 @@
+4.10.2 (2026-08-02)
+-------------------
+
+*Fixes*
+- WP-33347: Remediate Veracode CWE-73 (path manipulation) finding in `tests/unit/file_formats/test_csv.py` by routing temp-file cleanup through a validated `_safe_remove` helper anchored to the trusted system temp directory. Test-only change; no runtime behavior affected.
+
+
 2.2.0 (2022-05-12)
 -------------------
 
