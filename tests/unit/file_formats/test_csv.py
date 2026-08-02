@@ -10,11 +10,40 @@ def _mock_record_to_csv_line(record, schema, data_flattening_max_level=0):
     return record
 
 
+def _safe_temp_path(name):
+    """Validate a temp-file path before it is passed to open().
+
+    Resolves the path to a normalized absolute path and asserts it stays
+    inside the system temp directory. This removes the path-manipulation
+    taint flow (CWE-73) reported for open() calls that reuse a
+    ``NamedTemporaryFile`` name.
+    """
+    temp_dir = os.path.realpath(tempfile.gettempdir())
+    resolved = os.path.realpath(name)
+    if os.path.commonpath([temp_dir, resolved]) != temp_dir:
+        raise ValueError(f'Refusing to open path outside temp dir: {resolved}')
+    return resolved
+
+
 class TestCsv(unittest.TestCase):
 
     def setUp(self):
         self.maxDiff = None
         self.config = {}
+
+    def test_safe_temp_path_rejects_path_outside_temp_dir(self):
+        # WP-33345: the CWE-73 remediation must reject a tainted path that
+        # escapes the system temp directory instead of opening it.
+        with self.assertRaises(ValueError):
+            _safe_temp_path('/etc/passwd')
+
+        # A legitimate temp-file path must still resolve and be returned.
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            resolved = _safe_temp_path(temp_file.name)
+            self.assertEqual(resolved, os.path.realpath(temp_file.name))
+        finally:
+            os.remove(temp_file.name)
 
     def test_write_record_to_uncompressed_file(self):
         records = {
@@ -25,11 +54,11 @@ class TestCsv(unittest.TestCase):
 
         # Write uncompressed CSV file
         csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(csv_file.name, 'wb') as f:
+        with open(_safe_temp_path(csv_file.name), 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
         # Read and validate uncompressed CSV file
-        with open(csv_file.name, 'rt') as f:
+        with open(_safe_temp_path(csv_file.name), 'rt') as f:
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
@@ -44,11 +73,11 @@ class TestCsv(unittest.TestCase):
 
         # Write gzip compressed CSV file
         csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with gzip.open(csv_file.name, 'wb') as f:
+        with gzip.open(_safe_temp_path(csv_file.name), 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
         # Read and validate gzip compressed CSV file
-        with gzip.open(csv_file.name, 'rt') as f:
+        with gzip.open(_safe_temp_path(csv_file.name), 'rt') as f:
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
