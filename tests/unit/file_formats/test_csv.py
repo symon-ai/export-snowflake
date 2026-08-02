@@ -52,7 +52,9 @@ class TestCsv(unittest.TestCase):
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
-        os.remove(csv_file.name)
+        # Normalise the temp file name to its basename under the trusted
+        # temp directory before removal to avoid path manipulation (CWE-73).
+        os.remove(os.path.join(tempfile.gettempdir(), os.path.basename(csv_file.name)))
 
     def test_record_to_csv_line(self):
         record = {
