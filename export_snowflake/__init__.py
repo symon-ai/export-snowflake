@@ -6,6 +6,7 @@ import json
 import traceback
 import logging
 import os
+import stat
 import sys
 import boto3
 import time
@@ -128,6 +129,15 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
             LOGGER.error(f"Error occurred while removing external stage: {e}")
             pass
 
+def load_config(config_path):
+    """Load configuration from a regular file without following symlinks."""
+    config_fd = os.open(config_path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+    with os.fdopen(config_fd, encoding='utf8') as config_input:
+        if not stat.S_ISREG(os.fstat(config_input.fileno()).st_mode):
+            raise ValueError('Config path must refer to a regular file')
+        return json.load(config_input)
+
+
 def main():
     """Main function"""
     try:
@@ -137,8 +147,7 @@ def main():
         args = arg_parser.parse_args()
 
         if args.config:
-            with open(args.config, encoding="utf8") as config_input:
-                config = json.load(config_input)
+            config = load_config(args.config)
         else:
             config = {}
 

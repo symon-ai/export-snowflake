@@ -137,13 +137,13 @@ def records_to_file(records: Dict,
 
     filedesc, filename = mkstemp(suffix=file_suffix, prefix=prefix, dir=dest_dir)
 
-    # Using gzip or plain file object
+    # Use the descriptor returned by mkstemp so the generated path is never reopened.
     if compression:
-        with open(filedesc, 'wb') as outfile:
+        with os.fdopen(filedesc, 'wb') as outfile:
             with gzip.GzipFile(filename=filename, mode='wb',fileobj=outfile) as gzipfile:
                 write_records_to_file(gzipfile, records, schema, record_to_csv_line, data_flattening_max_level)
     else:
-        with open(filedesc, 'wb') as outfile:
+        with os.fdopen(filedesc, 'wb') as outfile:
             write_records_to_file(outfile, records, schema, record_to_csv_line, data_flattening_max_level)
 
     return filename
