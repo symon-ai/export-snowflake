@@ -6,6 +6,7 @@ import json
 import traceback
 import logging
 import os
+import stat
 import sys
 import boto3
 import time
@@ -128,6 +129,25 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
             LOGGER.error(f"Error occurred while removing external stage: {e}")
             pass
 
+def load_config(config_path):
+    """Load configuration from a regular file without following symlinks."""
+    config_fd = os.open(config_path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+    with os.fdopen(config_fd, encoding='utf8') as config_input:
+        if not stat.S_ISREG(os.fstat(config_input.fileno()).st_mode):
+            raise ValueError('Config path must refer to a regular file')
+        return json.load(config_input)
+
+
+def write_error_info(error_file_path, error_info):
+    """Write error details to a regular file without following symlinks."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_NOFOLLOW', 0)
+    error_fd = os.open(error_file_path, flags, 0o600)
+    with os.fdopen(error_fd, 'w', encoding='utf-8') as error_file:
+        if not stat.S_ISREG(os.fstat(error_file.fileno()).st_mode):
+            raise ValueError('Error path must refer to a regular file')
+        json.dump(error_info, error_file)
+
+
 def main():
     """Main function"""
     try:
@@ -137,8 +157,7 @@ def main():
         args = arg_parser.parse_args()
 
         if args.config:
-            with open(args.config, encoding="utf8") as config_input:
-                config = json.load(config_input)
+            config = load_config(args.config)
         else:
             config = {}
 
@@ -172,8 +191,7 @@ def main():
                 error_file_path = config.get('error_file_path', None)
                 if error_file_path is not None:
                     try:
-                        with open(error_file_path, 'w', encoding='utf-8') as fp:
-                            json.dump(error_info, fp)
+                        write_error_info(error_file_path, error_info)
                     except:
                         pass
                 # log error info as well in case file is corrupted

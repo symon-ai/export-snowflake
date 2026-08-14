@@ -1,4 +1,6 @@
+import os
 import unittest
+from unittest.mock import Mock, patch
 
 from pandas._testing import assert_frame_equal
 from pandas import DataFrame
@@ -49,6 +51,23 @@ class TestParquet(unittest.TestCase):
                                'key4': ['12:01:01', '13:01:01', '14:01:01'],
                                'key5': ['I\'m good', 'I\'m good too', 'I want to be good'],
                                'key6': [None, None, None]}))
+
+    @patch('export_snowflake.file_formats.parquet.records_to_dataframe')
+    @patch('export_snowflake.file_formats.parquet.mkstemp')
+    def test_records_to_file_writes_through_secure_descriptor(self, mkstemp_mock, records_to_dataframe_mock):
+        read_descriptor, write_descriptor = os.pipe()
+        os.close(read_descriptor)
+        mkstemp_mock.return_value = (write_descriptor, '/tmp/batch.parquet')
+        dataframe = Mock()
+        records_to_dataframe_mock.return_value = dataframe
+
+        filename = parquet.records_to_file({}, {})
+
+        self.assertEqual(filename, '/tmp/batch.parquet')
+        output_file = dataframe.to_parquet.call_args.args[0]
+        self.assertEqual(output_file.name, write_descriptor)
+        self.assertTrue(output_file.closed)
+        self.assertIsNone(dataframe.to_parquet.call_args.kwargs['compression'])
 
     def test_create_copy_sql(self):
         self.assertEqual(parquet.create_copy_sql(table_name='foo_table',
