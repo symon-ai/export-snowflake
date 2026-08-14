@@ -35,6 +35,20 @@ class TestexportSnowflake(unittest.TestCase):
             with self.assertRaises(OSError):
                 export_snowflake.load_config(symlink_path)
 
+    def test_write_error_info_rejects_symlink(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            error_path = os.path.join(temp_dir, 'error.json')
+            symlink_path = os.path.join(temp_dir, 'error-link.json')
+            with open(error_path, 'w', encoding='utf8') as error_file:
+                error_file.write('unchanged')
+            os.symlink(error_path, symlink_path)
+
+            with self.assertRaises(OSError):
+                export_snowflake.write_error_info(symlink_path, {'message': 'secret'})
+
+            with open(error_path, encoding='utf8') as error_file:
+                self.assertEqual(error_file.read(), 'unchanged')
+
     @patch('sys.getsizeof')
     # @patch('export_snowflake.flush_streams')
     @patch('export_snowflake.DbSync')

@@ -101,9 +101,10 @@ def records_to_file(records: Dict,
         file_suffix = f'.{suffix}'
         parquet_compression = None
 
-    filename = mkstemp(suffix=file_suffix, prefix=prefix, dir=dest_dir)[1]
+    file_descriptor, filename = mkstemp(suffix=file_suffix, prefix=prefix, dir=dest_dir)
 
     dataframe = records_to_dataframe(records, schema, data_flattening_max_level)
-    dataframe.to_parquet(filename, compression=parquet_compression)
+    with os.fdopen(file_descriptor, 'wb') as output_file:
+        dataframe.to_parquet(output_file, compression=parquet_compression)
 
     return filename
