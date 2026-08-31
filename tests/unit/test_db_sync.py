@@ -1,4 +1,5 @@
 import json
+import secrets
 import unittest
 
 from unittest.mock import patch, call
@@ -14,6 +15,7 @@ class TestDBSync(unittest.TestCase):
 
     def setUp(self):
         self.config = {}
+        self.config['password'] = secrets.token_urlsafe(32)
 
         self.json_types = {
             'str': {"type": ["string"]},
@@ -41,7 +43,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-value",
             'dbname': "dummy-value",
             'user': "dummy-value",
-            'password': "dummy-value",
+            'password': self.config['password'],
             'warehouse': "dummy-value",
             'default_export_schema': "dummy-value",
             'file_format': "dummy-value",
@@ -209,7 +211,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-value",
             'dbname': "dummy-value",
             'user': "dummy-value",
-            'password': "dummy-value",
+            'password': self.config['password'],
             'warehouse': "dummy-value",
             'default_export_schema': "dummy-value",
             'file_format': "dummy-value",
@@ -242,7 +244,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-value",
             'dbname': "dummy-value",
             'user': "dummy-value",
-            'password': "dummy-value",
+            'password': self.config['password'],
             'warehouse': "dummy-value",
             'default_export_schema': "dummy-value",
             'file_format': "dummy-value",
@@ -285,7 +287,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-value",
             'dbname': "dummy-value",
             'user': "dummy-value",
-            'password': "dummy-value",
+            'password': self.config['password'],
             'warehouse': "dummy-value",
             'default_export_schema': "dummy-value",
             'file_format': "dummy-value",
@@ -345,7 +347,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy_account",
             'dbname': "dummy_dbname",
             'user': "dummy_user",
-            'password': "dummy_password",
+            'password': self.config['password'],
             'warehouse': "dummy_warehouse",
             'default_export_schema': "dummy_default_export_schema",
             'file_format': "dummy_file_format",
@@ -385,7 +387,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy_account",
             'name': "dummy_dbname",
             'user': "dummy_user",
-            'password': "dummy_password",
+            'password': self.config['password'],
             'warehouse': "dummy_warehouse",
             'default_export_schema': "dummy_default_export_schema",
             'file_format': "dummy_file_format",
@@ -421,7 +423,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-account",
             'dbname': "dummy-db",
             'user': "dummy-user",
-            'password': "dummy-passwd",
+            'password': self.config['password'],
             'warehouse': "dummy-wh",
             'default_export_schema': "dummy-schema",
             'file_format': "dummy-file-format",
@@ -471,7 +473,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-account",
             'dbname': "dummy-db",
             'user': "dummy-user",
-            'password': "dummy-passwd",
+            'password': self.config['password'],
             'warehouse': "dummy-wh",
             'default_export_schema': "dummy-schema",
             'file_format': "dummy-file-format",
@@ -544,7 +546,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-account",
             'dbname': "dummy-db",
             'user': "dummy-user",
-            'password': "dummy-passwd",
+            'password': self.config['password'],
             'warehouse': "dummy-wh",
             'default_export_schema': "dummy-schema",
             'file_format': "dummy-file-format",
@@ -595,7 +597,7 @@ class TestDBSync(unittest.TestCase):
             'account': "dummy-account",
             'dbname': "dummy-db",
             'user': "dummy-user",
-            'password': "dummy-passwd",
+            'password': self.config['password'],
             'warehouse': "dummy-wh",
             'default_export_schema': "dummy-schema",
             'file_format': "dummy-file-format",
