@@ -1,3 +1,10 @@
+4.10.1 (2026-08-02)
+-------------------
+
+*Fixes*
+- WP-33331: Remediate Veracode CWE-73 (path manipulation) finding in `tests/unit/test_export_snowflake.py`. Fixture `open()` calls now route through a validated, basename-only resource-path helper anchored to a fixed resources directory. Test-only change; no runtime/production behavior affected.
+
+
 2.2.0 (2022-05-12)
 -------------------
 
