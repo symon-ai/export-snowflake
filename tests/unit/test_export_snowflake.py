@@ -165,7 +165,7 @@ class TestexportSnowflake(unittest.TestCase):
 
         self.config['batch_size'] = 5
 
-        with open(f'{os.path.dirname(__file__)}/resources/streams_only_state.json', 'r') as f:
+        with open(os.path.join(os.path.dirname(__file__), 'resources', 'streams_only_state.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
