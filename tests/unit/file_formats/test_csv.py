@@ -23,17 +23,16 @@ class TestCsv(unittest.TestCase):
         }
         schema = {}
 
-        # Write uncompressed CSV file
-        csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(csv_file.name, 'wb') as f:
-            csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
+        # Write uncompressed CSV file to a fixed, test-controlled path under a temp dir
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            csv_path = os.path.join(tmp_dir, 'test.csv')
+            with open(csv_path, 'wb') as f:
+                csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
-        # Read and validate uncompressed CSV file
-        with open(csv_file.name, 'rt') as f:
-            self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
-                                             'data5,data6,data7,data8\n'])
-
-        os.remove(csv_file.name)
+            # Read and validate uncompressed CSV file
+            with open(csv_path, 'rt') as f:
+                self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
+                                                 'data5,data6,data7,data8\n'])
 
     def test_write_records_to_compressed_file(self):
         records = {
@@ -42,17 +41,16 @@ class TestCsv(unittest.TestCase):
         }
         schema = {}
 
-        # Write gzip compressed CSV file
-        csv_file = tempfile.NamedTemporaryFile(delete=False)
-        with gzip.open(csv_file.name, 'wb') as f:
-            csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
+        # Write gzip compressed CSV file to a fixed, test-controlled path under a temp dir
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            csv_path = os.path.join(tmp_dir, 'test.csv.gz')
+            with gzip.open(csv_path, 'wb') as f:
+                csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
-        # Read and validate gzip compressed CSV file
-        with gzip.open(csv_file.name, 'rt') as f:
-            self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
-                                             'data5,data6,data7,data8\n'])
-
-        os.remove(csv_file.name)
+            # Read and validate gzip compressed CSV file
+            with gzip.open(csv_path, 'rt') as f:
+                self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
+                                                 'data5,data6,data7,data8\n'])
 
     def test_record_to_csv_line(self):
         record = {
