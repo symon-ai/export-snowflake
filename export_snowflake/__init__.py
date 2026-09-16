@@ -35,6 +35,37 @@ ERROR_END_MARKER = '[target_error_end]'
 
 LOCAL_SCHEMA_FILE_PATH = 'local_schema.json'
 
+def validate_config_path(config_path):
+    """Centralized validation for the user-supplied --config path (CWE-73).
+
+    Normalizes and canonically resolves the supplied path and confirms it
+    stays inside an allowed base directory so that a caller-controlled value
+    (e.g. containing ``..`` traversal sequences or a NUL byte) cannot be used
+    to open files outside the intended location. The allowed base directory
+    defaults to the current working directory and can be overridden with the
+    ``EXPORT_SNOWFLAKE_CONFIG_BASE_DIR`` environment variable.
+
+    Params:
+        config_path: the raw ``--config`` argument value
+
+    Returns:
+        The sanitized, canonical absolute path safe to pass to ``open()``.
+
+    Raises:
+        SymonException: if the path is empty, malformed, or escapes the
+            allowed base directory.
+    """
+    if not config_path or '\x00' in config_path:
+        raise SymonException('Invalid config file path.', 'snowflake.clientError')
+
+    base_dir = os.path.realpath(os.environ.get('EXPORT_SNOWFLAKE_CONFIG_BASE_DIR', os.getcwd()))
+    resolved_path = os.path.realpath(os.path.normpath(config_path))
+
+    if resolved_path != base_dir and not resolved_path.startswith(base_dir + os.sep):
+        raise SymonException('Config file path is outside of the allowed directory.', 'snowflake.clientError')
+
+    return resolved_path
+
 def get_snowflake_statics(config):
     """Retrieve common Snowflake items will be used multiple times
 
@@ -137,7 +168,8 @@ def main():
         args = arg_parser.parse_args()
 
         if args.config:
-            with open(args.config, encoding="utf8") as config_input:
+            safe_config_path = validate_config_path(args.config)
+            with open(safe_config_path, encoding="utf8") as config_input:
                 config = json.load(config_input)
         else:
             config = {}

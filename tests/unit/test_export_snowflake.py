@@ -10,11 +10,45 @@ from contextlib import redirect_stdout
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
+import tempfile
+
 import export_snowflake
+from export_snowflake.exceptions import SymonException
 
 
 def _mock_record_to_csv_line(record):
     return record
+
+
+class TestValidateConfigPath(unittest.TestCase):
+    """Regression tests for CWE-73 path traversal remediation (WP-33367)."""
+
+    def test_legitimate_config_path_inside_base_dir_is_accepted(self):
+        with tempfile.TemporaryDirectory() as base_dir:
+            config_path = os.path.join(base_dir, 'config.json')
+            with open(config_path, 'w', encoding='utf-8') as fp:
+                fp.write('{}')
+
+            with patch.dict(os.environ, {'EXPORT_SNOWFLAKE_CONFIG_BASE_DIR': base_dir}):
+                resolved = export_snowflake.validate_config_path(config_path)
+
+            self.assertEqual(resolved, os.path.realpath(config_path))
+
+    def test_path_traversal_outside_base_dir_is_rejected(self):
+        with tempfile.TemporaryDirectory() as base_dir:
+            malicious_path = os.path.join(base_dir, '..', '..', 'etc', 'passwd')
+
+            with patch.dict(os.environ, {'EXPORT_SNOWFLAKE_CONFIG_BASE_DIR': base_dir}):
+                with self.assertRaises(SymonException):
+                    export_snowflake.validate_config_path(malicious_path)
+
+    def test_empty_or_null_byte_path_is_rejected(self):
+        with tempfile.TemporaryDirectory() as base_dir:
+            with patch.dict(os.environ, {'EXPORT_SNOWFLAKE_CONFIG_BASE_DIR': base_dir}):
+                with self.assertRaises(SymonException):
+                    export_snowflake.validate_config_path('')
+                with self.assertRaises(SymonException):
+                    export_snowflake.validate_config_path('config.json\x00.txt')
 
 
 class TestexportSnowflake(unittest.TestCase):
