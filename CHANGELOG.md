@@ -1,3 +1,10 @@
+4.10.1 (2026-08-02)
+-------------------
+
+*Fixes*
+- WP-33365: Remediate CWE-73 path manipulation in `export_snowflake/file_formats/csv.py`. Validate the user-supplied `prefix` and `suffix` filename components in `records_to_file` before they flow into `mkstemp`/`open()`, rejecting path separators, `..` parent-directory references and NUL bytes so the CSV output cannot be redirected outside the intended directory.
+
+
 2.2.0 (2022-05-12)
 -------------------
 

@@ -54,6 +54,41 @@ class TestCsv(unittest.TestCase):
 
         os.remove(csv_file.name)
 
+    def test_records_to_file_rejects_prefix_traversal(self):
+        """WP-33365: a prefix with path traversal must not reach mkstemp/open (CWE-73)."""
+        records = {'pk_1': 'data1'}
+        schema = {}
+        with self.assertRaises(ValueError):
+            csv.records_to_file(records, schema, prefix='../../../../etc/evil_')
+
+    def test_records_to_file_rejects_suffix_traversal(self):
+        """WP-33365: a suffix containing path separators must be rejected (CWE-73)."""
+        records = {'pk_1': 'data1'}
+        schema = {}
+        with self.assertRaises(ValueError):
+            csv.records_to_file(records, schema, suffix='../../etc/passwd')
+
+    def test_records_to_file_accepts_legitimate_names(self):
+        """WP-33365: legitimate prefix/suffix still produce a readable CSV file."""
+        records = {
+            'pk_1': {'col_a': 'data1', 'col_b': 'data2'},
+            'pk_2': {'col_a': 'data3', 'col_b': 'data4'},
+        }
+        schema = {'col_a': {'type': ['null', 'string']},
+                  'col_b': {'type': ['null', 'string']}}
+        dest_dir = tempfile.mkdtemp()
+        filename = csv.records_to_file(
+            records, schema, suffix='csv', prefix='batch_', dest_dir=dest_dir)
+        try:
+            # Written inside the intended dest_dir, not redirected elsewhere.
+            self.assertEqual(os.path.dirname(filename), dest_dir)
+            with open(filename, 'rt') as f:
+                self.assertEqual(f.readlines(), ['"data1","data2"\n',
+                                                 '"data3","data4"\n'])
+        finally:
+            os.remove(filename)
+            os.rmdir(dest_dir)
+
     def test_record_to_csv_line(self):
         record = {
             'key1': '1',

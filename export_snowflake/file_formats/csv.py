@@ -10,6 +10,39 @@ from export_snowflake import flattening
 
 COMPRESSED_CSV_PATTERNS = '.*csv.gz'
 
+
+def _validate_filename_component(value, field_name):
+    """Validate a user-supplied filename component to prevent path traversal (CWE-73).
+
+    ``prefix`` and ``suffix`` are used verbatim by ``mkstemp`` to build the output
+    filename that is later passed to ``open()``. Because they originate from
+    user-supplied input, a value containing path separators, parent-directory
+    references or NUL bytes could redirect the write to an arbitrary location on
+    the server. Reject anything that is not a plain filename fragment so only a
+    safe component reaches ``mkstemp``/``open()``.
+
+    Params:
+        value: candidate filename component (``prefix`` or ``suffix``)
+        field_name: name of the argument, used in the raised error message
+
+    Raises:
+        ValueError: if ``value`` is not a plain filename component.
+    """
+    if value is None:
+        return
+    if not isinstance(value, str):
+        raise ValueError(f'{field_name} must be a string')
+    if ('\x00' in value
+            or '/' in value
+            or '\\' in value
+            or os.sep in value
+            or (os.altsep and os.altsep in value)
+            or '..' in value
+            or os.path.basename(value) != value):
+        raise ValueError(
+            f'{field_name} "{value}" must be a plain filename component without '
+            'path separators or parent-directory references')
+
 def create_copy_sql(table_name: str,
                     stage_name: str,
                     file_format_name: str,
@@ -127,6 +160,11 @@ def records_to_file(records: Dict,
     Returns:
         Absolute path of the generated CSV file
     """
+    # Validate user-supplied filename components before they flow into
+    # mkstemp/open() to prevent path-traversal (CWE-73).
+    _validate_filename_component(suffix, 'suffix')
+    _validate_filename_component(prefix, 'prefix')
+
     if dest_dir:
         os.makedirs(dest_dir, exist_ok=True)
 
