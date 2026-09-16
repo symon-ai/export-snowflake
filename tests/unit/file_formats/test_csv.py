@@ -6,6 +6,26 @@ import tempfile
 import export_snowflake.file_formats.csv as csv
 
 
+# Trusted directory the temp fixtures created by these tests are anchored to.
+_TMP_DIR = os.path.realpath(tempfile.gettempdir())
+
+
+def _safe_remove(path):
+    """Remove a file only if it resolves inside the trusted temp directory.
+
+    Guards against CWE-73 path manipulation: the fully-resolved absolute path
+    must live inside ``_TMP_DIR`` (the system temp dir the fixtures are created
+    in). Any path that escapes that trusted directory (e.g. via ``..``
+    traversal or an absolute path elsewhere) raises ``ValueError`` instead of
+    removing an arbitrary, potentially attacker-controlled file.
+    """
+    resolved = os.path.realpath(path)
+    if os.path.commonpath([_TMP_DIR, resolved]) != _TMP_DIR:
+        raise ValueError(
+            'Refusing to remove path outside trusted temp dir: {}'.format(path))
+    os.remove(resolved)
+
+
 def _mock_record_to_csv_line(record, schema, data_flattening_max_level=0):
     return record
 
@@ -24,7 +44,7 @@ class TestCsv(unittest.TestCase):
         schema = {}
 
         # Write uncompressed CSV file
-        csv_file = tempfile.NamedTemporaryFile(delete=False)
+        csv_file = tempfile.NamedTemporaryFile(delete=False, dir=_TMP_DIR)
         with open(csv_file.name, 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
@@ -33,7 +53,7 @@ class TestCsv(unittest.TestCase):
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
-        os.remove(csv_file.name)
+        _safe_remove(csv_file.name)
 
     def test_write_records_to_compressed_file(self):
         records = {
@@ -43,7 +63,7 @@ class TestCsv(unittest.TestCase):
         schema = {}
 
         # Write gzip compressed CSV file
-        csv_file = tempfile.NamedTemporaryFile(delete=False)
+        csv_file = tempfile.NamedTemporaryFile(delete=False, dir=_TMP_DIR)
         with gzip.open(csv_file.name, 'wb') as f:
             csv.write_records_to_file(f, records, schema, _mock_record_to_csv_line)
 
@@ -52,7 +72,33 @@ class TestCsv(unittest.TestCase):
             self.assertEqual(f.readlines(), ['data1,data2,data3,data4\n',
                                              'data5,data6,data7,data8\n'])
 
-        os.remove(csv_file.name)
+        _safe_remove(csv_file.name)
+
+    def test_safe_remove_rejects_path_outside_trusted_dir(self):
+        # WP-33347: CWE-73 guard — _safe_remove must refuse to delete a path
+        # that resolves outside the trusted temp directory, and must not touch
+        # the filesystem when it refuses.
+        target = os.path.join(os.path.dirname(__file__), 'not_deleted.txt')
+        with open(target, 'w') as f:
+            f.write('keep me')
+        try:
+            with self.assertRaises(ValueError):
+                _safe_remove(target)
+            # Traversal-style escape from the trusted dir is also rejected.
+            with self.assertRaises(ValueError):
+                _safe_remove(os.path.join(_TMP_DIR, '..', 'etc', 'passwd'))
+            self.assertTrue(os.path.exists(target))
+        finally:
+            os.remove(target)
+
+    def test_safe_remove_deletes_file_inside_trusted_dir(self):
+        # WP-33347: files legitimately created under the trusted temp dir are
+        # still removed as before, so fixture cleanup stays equivalent.
+        csv_file = tempfile.NamedTemporaryFile(delete=False, dir=_TMP_DIR)
+        csv_file.close()
+        self.assertTrue(os.path.exists(csv_file.name))
+        _safe_remove(csv_file.name)
+        self.assertFalse(os.path.exists(csv_file.name))
 
     def test_record_to_csv_line(self):
         record = {
