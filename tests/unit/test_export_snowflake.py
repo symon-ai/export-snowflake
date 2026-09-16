@@ -13,6 +13,32 @@ from unittest.mock import patch
 import export_snowflake
 
 
+# Fixed, trusted directory holding this test module's JSON fixtures. Resolved
+# once from the module location so resource lookups never depend on tainted
+# input.
+_RESOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+
+
+def _read_resource_lines(resource_name):
+    """Read the lines of a bundled test resource by bare filename.
+
+    Centralized validation to remediate CWE-73 (external control of file
+    name/path): the resource name must be a plain filename (no directory
+    separators, parent references, or absolute paths), and the resolved real
+    path must stay inside the fixed resources directory before it is opened.
+    """
+    if resource_name != os.path.basename(resource_name):
+        raise ValueError(f'Invalid resource name: {resource_name!r}')
+
+    resources_root = os.path.realpath(_RESOURCES_DIR)
+    resource_path = os.path.realpath(os.path.join(resources_root, resource_name))
+    if os.path.commonpath([resources_root, resource_path]) != resources_root:
+        raise ValueError(f'Resource path escapes resources directory: {resource_name!r}')
+
+    with open(resource_path, 'r') as f:
+        return f.readlines()
+
+
 def _mock_record_to_csv_line(record):
     return record
 
@@ -31,8 +57,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['batch_size'] = 20
         self.config['flush_all_streams'] = True
 
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
-            lines = f.readlines()
+        lines = _read_resource_lines('logical-streams.json')
 
         instance = dbSync_mock.return_value
         instance.create_schema_if_not_exists.return_value = None
@@ -52,8 +77,7 @@ class TestexportSnowflake(unittest.TestCase):
                                                                  sys_getsizeof_mock):
         self.config['batch_size'] = 20
 
-        with open(f'{os.path.dirname(__file__)}/resources/same-schemas-multiple-times.json', 'r') as f:
-            lines = f.readlines()
+        lines = _read_resource_lines('same-schemas-multiple-times.json')
 
         instance = dbSync_mock.return_value
         instance.create_schema_if_not_exists.return_value = None
@@ -84,8 +108,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['flush_all_streams'] = True
 
         # Expecting 40 records
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
-            lines = f.readlines()
+        lines = _read_resource_lines('logical-streams.json')
 
         instance = dbSync_mock.return_value
         instance.create_schema_if_not_exists.return_value = None
@@ -106,8 +129,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['archive_load_files'] = True
         self.config['s3_bucket'] = 'dummy_bucket'
 
-        with open(f'{os.path.dirname(__file__)}/resources/messages-simple-table.json', 'r') as f:
-            lines = f.readlines()
+        lines = _read_resource_lines('messages-simple-table.json')
 
         instance = dbSync_mock.return_value
         instance.create_schema_if_not_exists.return_value = None
@@ -135,8 +157,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['tap_id'] = 'test_tap_id'
         self.config['archive_load_files'] = True
 
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
-            lines = f.readlines()
+        lines = _read_resource_lines('logical-streams.json')
 
         instance = dbSync_mock.return_value
         instance.create_schema_if_not_exists.return_value = None
@@ -165,8 +186,7 @@ class TestexportSnowflake(unittest.TestCase):
 
         self.config['batch_size'] = 5
 
-        with open(f'{os.path.dirname(__file__)}/resources/streams_only_state.json', 'r') as f:
-            lines = f.readlines()
+        lines = _read_resource_lines('streams_only_state.json')
 
         instance = dbSync_mock.return_value
         instance.create_schema_if_not_exists.return_value = None
@@ -184,3 +204,23 @@ class TestexportSnowflake(unittest.TestCase):
         #     buf.getvalue().strip(),
         #     '{"bookmarks": {"tap_mysql_test-test_simple_table": {"replication_key": "id", '
         #     '"replication_key_value": 100, "version": 1}}}')
+
+
+class TestResourceLoader(unittest.TestCase):
+    """Regression tests for the CWE-73 remediation (WP-33329)."""
+
+    def test_valid_resource_loads_from_resources_dir(self):
+        lines = _read_resource_lines('logical-streams.json')
+        self.assertTrue(lines)
+
+    def test_path_separator_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _read_resource_lines('../test_export_snowflake.py')
+
+    def test_absolute_path_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _read_resource_lines('/etc/passwd')
+
+    def test_nested_path_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _read_resource_lines('sub/logical-streams.json')
