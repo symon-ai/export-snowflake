@@ -1,3 +1,10 @@
+4.10.1 (2026-07-26)
+-------------------
+
+*Fixes*
+- WP-32454: Remediate CWE-73 path manipulation. Validate the user-supplied `error_file_path` config value against a fixed base directory before opening it for writing, rejecting `..` traversal and absolute paths outside the run directory.
+
+
 2.2.0 (2022-05-12)
 -------------------
 

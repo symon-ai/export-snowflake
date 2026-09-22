@@ -35,6 +35,44 @@ ERROR_END_MARKER = '[target_error_end]'
 
 LOCAL_SCHEMA_FILE_PATH = 'local_schema.json'
 
+
+def validate_output_file_path(file_path, base_dir=None):
+    """Validate a user-supplied output file path to prevent path traversal (CWE-73).
+
+    The `file_path` originates from the connector config, which is populated with
+    user-supplied input. Resolving it and asserting the real path stays within a
+    fixed base directory prevents an attacker from writing to arbitrary locations
+    on the server via `..` traversal or absolute paths.
+
+    Params:
+        file_path: candidate output file path from user-supplied config
+        base_dir: directory the resolved path must stay within (Default: current
+            working directory, where the connector writes its run artifacts)
+
+    Returns:
+        The validated, normalized absolute path safe to pass to open().
+
+    Raises:
+        ValueError: if `file_path` is empty or resolves outside `base_dir`.
+    """
+    if not file_path or not isinstance(file_path, str):
+        raise ValueError('error_file_path must be a non-empty string')
+
+    if base_dir is None:
+        base_dir = os.getcwd()
+
+    resolved_base = os.path.realpath(base_dir)
+    resolved_path = os.path.realpath(os.path.join(resolved_base, file_path))
+
+    # os.path.commonpath raises ValueError for paths on different drives (Windows);
+    # comparing against the base with a trailing separator avoids sibling-prefix
+    # false positives (e.g. /base-evil vs /base).
+    if resolved_path != resolved_base and not resolved_path.startswith(resolved_base + os.sep):
+        raise ValueError(f'error_file_path "{file_path}" resolves outside the allowed base directory')
+
+    return resolved_path
+
+
 def get_snowflake_statics(config):
     """Retrieve common Snowflake items will be used multiple times
 
@@ -172,7 +210,8 @@ def main():
                 error_file_path = config.get('error_file_path', None)
                 if error_file_path is not None:
                     try:
-                        with open(error_file_path, 'w', encoding='utf-8') as fp:
+                        safe_error_file_path = validate_output_file_path(error_file_path)
+                        with open(safe_error_file_path, 'w', encoding='utf-8') as fp:
                             json.dump(error_info, fp)
                     except:
                         pass
