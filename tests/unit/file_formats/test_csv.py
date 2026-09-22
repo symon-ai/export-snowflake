@@ -2,6 +2,7 @@ import unittest
 import os
 import gzip
 import tempfile
+from unittest.mock import patch
 
 import export_snowflake.file_formats.csv as csv
 
@@ -53,6 +54,20 @@ class TestCsv(unittest.TestCase):
                                              'data5,data6,data7,data8\n'])
 
         os.remove(csv_file.name)
+
+    @patch('export_snowflake.file_formats.csv.open', side_effect=AssertionError('path reopened'))
+    def test_records_to_file_writes_through_secure_descriptor(self, open_mock):
+        records = {'pk_1': {'first': 'data1', 'second': 'data2'}}
+        schema = {'first': {}, 'second': {}}
+
+        filename = csv.records_to_file(records, schema, prefix='security_test_')
+        try:
+            with open(filename, 'rt') as outfile:
+                self.assertEqual(outfile.read(), '"data1","data2"\n')
+        finally:
+            os.remove(filename)
+
+        open_mock.assert_not_called()
 
     def test_record_to_csv_line(self):
         record = {
