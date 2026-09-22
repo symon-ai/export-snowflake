@@ -13,6 +13,26 @@ from unittest.mock import patch
 import export_snowflake
 
 
+# Fixed, trusted directory that holds this test module's JSON fixtures.
+# Resolving it once, absolutely, keeps the path fully under this module's
+# control (CWE-73 / path-manipulation remediation).
+_RESOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+
+
+def _resource_path(filename):
+    """Return the absolute path to a fixture inside the trusted resources dir.
+
+    Only the basename of ``filename`` is honoured, and the result is verified
+    to stay inside ``_RESOURCES_DIR`` so a caller can never traverse outside
+    the intended fixture directory.
+    """
+    safe_name = os.path.basename(filename)
+    resolved = os.path.normpath(os.path.join(_RESOURCES_DIR, safe_name))
+    if os.path.dirname(resolved) != _RESOURCES_DIR:
+        raise ValueError(f'Invalid resource file name: {filename!r}')
+    return resolved
+
+
 def _mock_record_to_csv_line(record):
     return record
 
@@ -31,7 +51,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['batch_size'] = 20
         self.config['flush_all_streams'] = True
 
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
+        with open(_resource_path('logical-streams.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -52,7 +72,7 @@ class TestexportSnowflake(unittest.TestCase):
                                                                  sys_getsizeof_mock):
         self.config['batch_size'] = 20
 
-        with open(f'{os.path.dirname(__file__)}/resources/same-schemas-multiple-times.json', 'r') as f:
+        with open(_resource_path('same-schemas-multiple-times.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -84,7 +104,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['flush_all_streams'] = True
 
         # Expecting 40 records
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
+        with open(_resource_path('logical-streams.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -106,7 +126,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['archive_load_files'] = True
         self.config['s3_bucket'] = 'dummy_bucket'
 
-        with open(f'{os.path.dirname(__file__)}/resources/messages-simple-table.json', 'r') as f:
+        with open(_resource_path('messages-simple-table.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -135,7 +155,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['tap_id'] = 'test_tap_id'
         self.config['archive_load_files'] = True
 
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
+        with open(_resource_path('logical-streams.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -165,7 +185,7 @@ class TestexportSnowflake(unittest.TestCase):
 
         self.config['batch_size'] = 5
 
-        with open(f'{os.path.dirname(__file__)}/resources/streams_only_state.json', 'r') as f:
+        with open(_resource_path('streams_only_state.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
