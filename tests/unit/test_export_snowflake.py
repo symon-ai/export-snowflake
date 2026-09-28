@@ -4,6 +4,7 @@ import io
 import json
 import unittest
 import os
+import tempfile
 import itertools
 
 from contextlib import redirect_stdout
@@ -184,3 +185,87 @@ class TestexportSnowflake(unittest.TestCase):
         #     buf.getvalue().strip(),
         #     '{"bookmarks": {"tap_mysql_test-test_simple_table": {"replication_key": "id", '
         #     '"replication_key_value": 100, "version": 1}}}')
+
+
+
+class TestExportSecurity(unittest.TestCase):
+    def test_error_report_is_written_beside_config_on_failure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config_path = os.path.join(folder, 'target.config.json')
+            error_path = os.path.join(folder, 'targetError.json')
+            with open(config_path, 'w', encoding='utf-8') as fp:
+                json.dump({'error_file_path': error_path}, fp)
+            with patch('sys.argv', ['export-snowflake', '--config', config_path]), \
+                    patch('export_snowflake.get_snowflake_statics', return_value='CSV'), \
+                    patch('export_snowflake.direct_transfer_data_from_s3_to_snowflake',
+                          side_effect=RuntimeError('export failed')):
+                with self.assertRaisesRegex(RuntimeError, 'export failed'):
+                    export_snowflake.main()
+            with open(error_path, encoding='utf-8') as fp:
+                report = json.load(fp)
+            self.assertIn('export failed', report['message'])
+
+    def test_error_report_cannot_write_outside_config_directory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config_path = os.path.join(folder, 'target.config.json')
+            outside = os.path.join(folder, 'outside')
+            os.mkdir(outside)
+            error_path = os.path.join(outside, 'targetError.json')
+            with open(error_path, 'w', encoding='utf-8') as fp:
+                fp.write('untouched')
+            with open(config_path, 'w', encoding='utf-8') as fp:
+                json.dump({'error_file_path': error_path}, fp)
+            with patch('sys.argv', ['export-snowflake', '--config', config_path]), \
+                    patch('export_snowflake.get_snowflake_statics', return_value='CSV'), \
+                    patch('export_snowflake.direct_transfer_data_from_s3_to_snowflake',
+                          side_effect=RuntimeError('export failed')):
+                with self.assertRaises(RuntimeError):
+                    export_snowflake.main()
+            with open(error_path, encoding='utf-8') as fp:
+                self.assertEqual(fp.read(), 'untouched')
+
+    def test_error_report_does_not_follow_symlinks(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config_path = os.path.join(folder, 'target.config.json')
+            outside = os.path.join(folder, 'outside.json')
+            with open(outside, 'w', encoding='utf-8') as fp:
+                fp.write('untouched')
+            os.symlink(outside, os.path.join(folder, 'targetError.json'))
+            with self.assertRaises(OSError):
+                export_snowflake.write_error_file(
+                    {'error_file_path': os.path.join(folder, 'targetError.json')},
+                    config_path, {'message': 'export failed'})
+            with open(outside, encoding='utf-8') as fp:
+                self.assertEqual(fp.read(), 'untouched')
+
+    @patch('export_snowflake.DbSync')
+    @patch('export_snowflake.boto3.client')
+    def test_s3_schema_selection_and_stream_logging(self, s3_client, db_sync):
+        with tempfile.TemporaryDirectory() as folder:
+            schema_path = os.path.join(folder, 'local_schema.json')
+            s3 = s3_client.return_value
+            s3.list_objects_v2.return_value = {
+                'Contents': [{'Key': 'exports/job/records.csv.gz'},
+                             {'Key': 'exports/job/schema.json'}]}
+
+            def download_schema(bucket, key, destination):
+                with open(destination, 'w', encoding='utf-8') as fp:
+                    json.dump({'fields': {'id': {'type': ['integer']}}}, fp)
+
+            s3.download_file.side_effect = download_schema
+            config = {'bucket': 'authorized-bucket', 'prefix': 'exports/job/',
+                      'stream': 'orders\nFORGED LOG', 'key_columns': ['id']}
+            with patch.object(export_snowflake, 'LOCAL_SCHEMA_FILE_PATH', schema_path), \
+                    self.assertLogs(export_snowflake.LOGGER, level='INFO') as captured:
+                export_snowflake.direct_transfer_data_from_s3_to_snowflake(config, None, 'CSV')
+
+            s3.list_objects_v2.assert_called_once_with(
+                Bucket='authorized-bucket', Prefix='exports/job/')
+            s3.download_file.assert_called_once_with(
+                'authorized-bucket', 'exports/job/schema.json', schema_path)
+            db_sync.return_value.generate_temporary_external_s3_stage.assert_called_once_with(
+                'authorized-bucket', 'exports/job/', None, None)
+            event = next(record.getMessage() for record in captured.records
+                         if 'Elapsed time usage' in record.getMessage())
+            self.assertIn(r'orders\nFORGED LOG', event)
+            self.assertNotIn('\n', event)

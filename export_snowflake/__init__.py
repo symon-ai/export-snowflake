@@ -35,6 +35,23 @@ ERROR_END_MARKER = '[target_error_end]'
 
 LOCAL_SCHEMA_FILE_PATH = 'local_schema.json'
 
+
+def write_error_file(config, config_path, error_info):
+    """Write only the error report beside the loaded config, never an arbitrary file."""
+    error_path = config.get('error_file_path')
+    if not error_path:
+        return
+    if (not config_path or os.path.basename(error_path) != 'targetError.json'
+            or os.path.realpath(os.path.dirname(os.path.abspath(error_path)))
+            != os.path.realpath(os.path.dirname(os.path.abspath(config_path)))
+            or os.path.realpath(error_path) == os.path.realpath(config_path)):
+        raise ValueError('error_file_path must be targetError.json beside the config file')
+
+    # Refuse a pre-existing symlink even when its target happens to be local.
+    fd = os.open(error_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'w', encoding='utf-8') as fp:
+        json.dump(error_info, fp)
+
 def get_snowflake_statics(config):
     """Retrieve common Snowflake items will be used multiple times
 
@@ -104,7 +121,7 @@ def direct_transfer_data_from_s3_to_snowflake(config, o, file_format_type):
         
         transfer_end_time = time.time()
         stream = config["stream"]
-        LOGGER.info(f"Elapsed time usage for {stream} is {transfer_end_time - transfer_start_time}")
+        LOGGER.info("Elapsed time usage for %r is %s", stream, transfer_end_time - transfer_start_time)
     except snowflake.connector.errors.ProgrammingError as e:
         err_msg = str(e)
         storage_integration = config.get('storage_integration', '').upper()
@@ -169,13 +186,10 @@ def main():
     finally:
         if error_info is not None:
             try:
-                error_file_path = config.get('error_file_path', None)
-                if error_file_path is not None:
-                    try:
-                        with open(error_file_path, 'w', encoding='utf-8') as fp:
-                            json.dump(error_info, fp)
-                    except:
-                        pass
+                try:
+                    write_error_file(config, args.config, error_info)
+                except (OSError, ValueError):
+                    LOGGER.warning('Could not write error report to the configured location')
                 # log error info as well in case file is corrupted
                 error_info_json = json.dumps(error_info)
                 error_start_marker = args.config.get('error_start_marker', ERROR_START_MARKER)

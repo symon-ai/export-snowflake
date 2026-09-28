@@ -1,7 +1,9 @@
 import json
+import logging
+import time
 import unittest
 
-from unittest.mock import patch, call
+from unittest.mock import Mock, patch, call
 
 from export_snowflake import db_sync
 from export_snowflake.exceptions import PrimaryKeyNotFoundException
@@ -639,3 +641,66 @@ class TestDBSync(unittest.TestCase):
         #     call(['alter table dummy-schema."TABLE1" add primary key("ID");',
         #           'alter table dummy-schema."TABLE1" alter column "ID" drop not null;'])
         # ])
+
+
+class TestOAuthRefreshSecurity(unittest.TestCase):
+    def setUp(self):
+        self.sync = db_sync.DbSync.__new__(db_sync.DbSync)
+        self.sync.logger = logging.getLogger(__name__)
+        self.sync.connection_config = {
+            'account': 'xy12345.eu-central-1.aws',
+            'client_id': 'client-id',
+            'client_secret': 'client-secret',
+            'refresh_token': 'refresh-secret',
+            'access_token': 'old-access-token',
+        }
+
+    def test_invalid_account_is_rejected_at_config_boundary(self):
+        config = {
+            'account': 'xy12345.eu-central-1.aws',
+            'auth_method': 'oauth',
+            'access_token': 'old-access-token',
+            'dbname': 'analytics',
+            'warehouse': 'export_wh',
+            'file_format': 'analytics.export_csv',
+            'default_target_schema': 'public',
+        }
+        self.assertEqual(db_sync.validate_config(config), [])
+        config['account'] = 'example@attacker.example/'
+        self.assertIn('Invalid Snowflake account', db_sync.validate_config(config))
+
+    @patch('export_snowflake.db_sync.requests.post')
+    def test_refresh_uses_snowflake_https_host_and_updates_access_token(self, post):
+        post.return_value = Mock(status_code=200)
+        post.return_value.json.return_value = {'access_token': 'new-access-token', 'expires_in': 120}
+
+        for account in ('xy12345.eu-central-1.aws', 'org-name_account'):
+            with self.subTest(account=account):
+                self.sync.connection_config['account'] = account
+                self.sync._refresh_access_token()
+                self.assertEqual(self.sync.connection_config['access_token'], 'new-access-token')
+                self.assertGreater(self.sync._token_expires_at, time.time())
+                args, kwargs = post.call_args
+                self.assertEqual(args[0], f'https://{account}.snowflakecomputing.com/oauth/token-request')
+                self.assertEqual(kwargs['auth'], ('client-id', 'client-secret'))
+                self.assertEqual(kwargs['data']['refresh_token'], 'refresh-secret')
+                self.assertIs(kwargs['allow_redirects'], False)
+
+    @patch('export_snowflake.db_sync.requests.post')
+    def test_account_cannot_redirect_token_post_to_another_host(self, post):
+        for account in ('example@attacker.example/', 'account/path', 'account:443',
+                        'account?to=attacker.example', 'account..region', ''):
+            with self.subTest(account=account):
+                self.sync.connection_config['account'] = account
+                with self.assertRaises(ValueError):
+                    self.sync._refresh_access_token()
+        post.assert_not_called()
+        self.assertEqual(self.sync.connection_config['access_token'], 'old-access-token')
+
+    @patch('export_snowflake.db_sync.requests.post')
+    def test_refresh_rejects_http_redirect_without_disclosing_secrets(self, post):
+        post.return_value = Mock(status_code=307, headers={'Location': 'http://attacker.example/token'})
+        with self.assertRaisesRegex(ValueError, 'redirected'):
+            self.sync._refresh_access_token()
+        self.assertFalse(post.call_args.kwargs['allow_redirects'])
+        self.assertEqual(self.sync.connection_config['access_token'], 'old-access-token')
