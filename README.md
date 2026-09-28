@@ -118,6 +118,12 @@ Running the the export connector requires a `config.json` file. Example with the
 
 Full list of options in `config.json`:
 
+For OAuth token refresh, `account` must be a Snowflake account identifier (for
+example `rtxxxxx.eu-central-1` or `organization-account`), not a URL; the
+connector does not follow token endpoint redirects. When `error_file_path` is
+set, it must point to `targetError.json` in the same directory as the loaded
+config file. Failure details are still logged if that file cannot be written.
+
 | Property                            | Type    | Required?  | Description                                                   |
 |-------------------------------------|---------|------------|---------------------------------------------------------------|
 | account                             | String  | Yes        | Snowflake account name (i.e. rtXXXXX.eu-central-1)            |

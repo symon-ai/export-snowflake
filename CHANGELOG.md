@@ -1,3 +1,11 @@
+4.10.1 (2026-09-28)
+-------------------
+
+*Security fixes*
+- Restrict OAuth token refresh to valid Snowflake account hosts and refuse token endpoint redirects.
+- Keep failure reports next to the loaded config and refuse symlink destinations.
+- Escape control characters in stream names written to elapsed-time logs.
+
 2.2.0 (2022-05-12)
 -------------------
 

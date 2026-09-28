@@ -6,6 +6,7 @@ import time
 import os
 import requests
 
+
 from cryptography.hazmat.primitives import serialization
 from typing import List, Dict, Union, Tuple, Set
 from singer import get_logger
@@ -16,6 +17,13 @@ from export_snowflake.file_format import FileFormat, FileFormatTypes
 from export_snowflake.exceptions import TooManyRecordsException, SymonException
 from export_snowflake.upload_clients.s3_upload_client import S3UploadClient
 from export_snowflake.upload_clients.snowflake_upload_client import SnowflakeUploadClient
+
+# A locator can include region/cloud labels; org-account names can use hyphens.
+# Exclude URL delimiters so OAuth credentials cannot be sent to another host.
+SNOWFLAKE_ACCOUNT = re.compile(
+    r'[A-Za-z0-9_](?:[A-Za-z0-9_-]*[A-Za-z0-9_])?'
+    r'(?:\.[A-Za-z0-9_](?:[A-Za-z0-9_-]*[A-Za-z0-9_])?)*'
+)
 
 
 def validate_config(config):
@@ -31,6 +39,10 @@ def validate_config(config):
     ]
 
     required_config_keys = []
+
+    account = config.get('account')
+    if not isinstance(account, str) or not SNOWFLAKE_ACCOUNT.fullmatch(account):
+        errors.append('Invalid Snowflake account')
 
     auth_method = config.get('auth_method', None)
     if auth_method == 'basic':
@@ -287,13 +299,17 @@ class DbSync:
         use the new token automatically.
         """
         account = self.connection_config['account']
+        if not isinstance(account, str) or not SNOWFLAKE_ACCOUNT.fullmatch(account):
+            raise ValueError('Invalid Snowflake account for OAuth token refresh')
         url = f"https://{account}.snowflakecomputing.com/oauth/token-request"
 
         auth = (self.connection_config['client_id'], self.connection_config['client_secret'])
         response = requests.post(url, data={
             'grant_type': 'refresh_token',
             'refresh_token': self.connection_config['refresh_token']
-        }, auth=auth, timeout=30)
+        }, auth=auth, timeout=30, allow_redirects=False)
+        if 300 <= response.status_code < 400:
+            raise ValueError('Snowflake OAuth token endpoint redirected')
         response.raise_for_status()
 
         tokens = response.json()
