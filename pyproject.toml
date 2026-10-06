@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "export-snowflake"
-version="4.10.0"
+version="4.11.0"
 description = "Export for loading data from S3 to Snowflake"
 authors = ["Wise"]
 
@@ -28,7 +28,7 @@ pytest-tesults = "*"
 [tool.poetry.group.security-overrides.dependencies]
 joblib = "^1.5.3"
 urllib3 = "^2.7.0"
-pyjwt = "^2.13.0"
+pyjwt = "^2.14.0"
 
 [tool.poetry.scripts]
 export-snowflake = "export_snowflake:main"

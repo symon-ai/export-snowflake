@@ -24,7 +24,7 @@ packaging = {version = "==26.2", markers = "python_version >= \"3.13\" and pytho
 pandas = {version = "==2.3.3", markers = "python_version >= \"3.13\" and python_full_version < \"4.0.0\""}
 platformdirs = {version = "==4.10.0", markers = "python_version >= \"3.13\" and python_full_version < \"4.0.0\""}
 pycparser = {version = "==3.0", markers = "python_version >= \"3.13\" and python_full_version < \"4.0.0\" and platform_python_implementation != \"PyPy\" and implementation_name != \"PyPy\""}
-pyjwt = {version = "==2.13.0", markers = "python_version >= \"3.13\" and python_full_version < \"4.0.0\""}
+pyjwt = {version = "==2.14.0", markers = "python_version >= \"3.13\" and python_full_version < \"4.0.0\""}
 pyopenssl = {version = "==26.3.0", markers = "python_version >= \"3.13\" and python_full_version < \"4.0.0\""}
 python-dateutil = {version = "==2.9.0.post0", markers = "python_version >= \"3.13\" and python_full_version < \"4.0.0\""}
 pytz = {version = "==2026.2", markers = "python_full_version >= \"3.13.0\" and python_full_version < \"4.0.0\""}
