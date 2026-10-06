@@ -1,3 +1,11 @@
+4.10.1 (unreleased)
+-------------------
+
+*Fixes*
+- WP-35859: Pin PyJWT 2.15.0 and snowflake-connector-python 4.7.3 for the thirteen findings with verified released fixes, and synchronize the SCA inventory.
+- CVE-2026-103001 remains unresolved: the PyJWT maintainer has not identified a released patch.
+
+
 2.2.0 (2022-05-12)
 -------------------
 
