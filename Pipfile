@@ -44,4 +44,4 @@ urllib3 = {version = "==2.7.0", markers = "python_version >= \"3.13\" and python
 
 [requires]
 python_version = "3.13"
-python_full_version = "3.13.2"
+python_full_version = "3.13.13"
