@@ -2,7 +2,7 @@
 -------------------
 
 *Changes*
-- Upgrade PyJWT to 2.14.0 to address CVE-2026-102268.
+- Upgrade PyJWT to 2.15.1 (from 2.13.0) for Veracode SCA batch WP-36237–WP-36251.
 
 
 2.2.0 (2022-05-12)

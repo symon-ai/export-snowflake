@@ -28,7 +28,7 @@ pytest-tesults = "*"
 [tool.poetry.group.security-overrides.dependencies]
 joblib = "^1.5.3"
 urllib3 = "^2.7.0"
-pyjwt = "^2.14.0"
+pyjwt = "^2.15.0"
 
 [tool.poetry.scripts]
 export-snowflake = "export_snowflake:main"
