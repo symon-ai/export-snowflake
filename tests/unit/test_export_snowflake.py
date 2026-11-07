@@ -12,6 +12,31 @@ from unittest.mock import patch
 
 import export_snowflake
 
+# Directory holding the static test fixtures. Kept as a module-level constant so
+# resource lookups are always anchored to a fixed, trusted base directory.
+RESOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources')
+
+
+def _resource_path(filename):
+    """Resolve a fixture filename to an absolute path anchored under RESOURCES_DIR.
+
+    Centralized validation routine (CWE-73 / path traversal): only a bare
+    filename is accepted, and the fully resolved path is verified to stay inside
+    RESOURCES_DIR so that traversal sequences (e.g. ``../``) or absolute paths
+    cannot escape the intended fixtures directory.
+    """
+    # Reject anything that is not a plain filename (no directory separators,
+    # no absolute paths, no traversal sequences).
+    if filename != os.path.basename(filename):
+        raise ValueError(f'Invalid resource filename: {filename!r}')
+
+    resolved = os.path.realpath(os.path.join(RESOURCES_DIR, filename))
+    base = os.path.realpath(RESOURCES_DIR)
+    if os.path.commonpath([resolved, base]) != base:
+        raise ValueError(f'Resource path escapes fixtures directory: {filename!r}')
+
+    return resolved
+
 
 def _mock_record_to_csv_line(record):
     return record
@@ -31,7 +56,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['batch_size'] = 20
         self.config['flush_all_streams'] = True
 
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
+        with open(_resource_path('logical-streams.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -52,7 +77,7 @@ class TestexportSnowflake(unittest.TestCase):
                                                                  sys_getsizeof_mock):
         self.config['batch_size'] = 20
 
-        with open(f'{os.path.dirname(__file__)}/resources/same-schemas-multiple-times.json', 'r') as f:
+        with open(_resource_path('same-schemas-multiple-times.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -84,7 +109,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['flush_all_streams'] = True
 
         # Expecting 40 records
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
+        with open(_resource_path('logical-streams.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -106,7 +131,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['archive_load_files'] = True
         self.config['s3_bucket'] = 'dummy_bucket'
 
-        with open(f'{os.path.dirname(__file__)}/resources/messages-simple-table.json', 'r') as f:
+        with open(_resource_path('messages-simple-table.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -135,7 +160,7 @@ class TestexportSnowflake(unittest.TestCase):
         self.config['tap_id'] = 'test_tap_id'
         self.config['archive_load_files'] = True
 
-        with open(f'{os.path.dirname(__file__)}/resources/logical-streams.json', 'r') as f:
+        with open(_resource_path('logical-streams.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -165,7 +190,7 @@ class TestexportSnowflake(unittest.TestCase):
 
         self.config['batch_size'] = 5
 
-        with open(f'{os.path.dirname(__file__)}/resources/streams_only_state.json', 'r') as f:
+        with open(_resource_path('streams_only_state.json'), 'r') as f:
             lines = f.readlines()
 
         instance = dbSync_mock.return_value
@@ -184,3 +209,24 @@ class TestexportSnowflake(unittest.TestCase):
         #     buf.getvalue().strip(),
         #     '{"bookmarks": {"tap_mysql_test-test_simple_table": {"replication_key": "id", '
         #     '"replication_key_value": 100, "version": 1}}}')
+
+
+class TestResourcePathValidation(unittest.TestCase):
+    """Regression tests for the CWE-73 path-traversal remediation (WP-33333)."""
+
+    def test_valid_filename_resolves_under_resources_dir(self):
+        resolved = _resource_path('logical-streams.json')
+        self.assertTrue(resolved.startswith(os.path.realpath(RESOURCES_DIR) + os.sep))
+        self.assertEqual(os.path.basename(resolved), 'logical-streams.json')
+
+    def test_traversal_sequence_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _resource_path('../../../etc/passwd')
+
+    def test_absolute_path_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _resource_path('/etc/passwd')
+
+    def test_nested_separator_is_rejected(self):
+        with self.assertRaises(ValueError):
+            _resource_path('subdir/logical-streams.json')
