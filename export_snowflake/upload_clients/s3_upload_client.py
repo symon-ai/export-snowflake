@@ -5,10 +5,8 @@ import os
 import boto3
 import datetime
 
-from snowflake.connector.encryption_util import SnowflakeEncryptionUtil
-from snowflake.connector.storage_client import SnowflakeFileEncryptionMaterial
-
 from .base_upload_client import BaseUploadClient
+from .encryption import encrypt_file
 
 
 class S3UploadClient(BaseUploadClient):
@@ -59,16 +57,7 @@ class S3UploadClient(BaseUploadClient):
         master_key = self.connection_config.get('client_side_encryption_master_key', '')
         if master_key != '':
             # Encrypt the file
-            encryption_material = SnowflakeFileEncryptionMaterial(
-                query_stage_master_key=master_key,
-                query_id='',
-                smk_id=0
-            )
-            encryption_metadata, encrypted_file = SnowflakeEncryptionUtil.encrypt_file(
-                encryption_material,
-                file,
-                tmp_dir=temp_dir
-            )
+            encryption_metadata, encrypted_file = encrypt_file(master_key, file, tmp_dir=temp_dir)
 
             # Upload to s3
             extra_args = {'ACL': s3_acl} if s3_acl else {}
