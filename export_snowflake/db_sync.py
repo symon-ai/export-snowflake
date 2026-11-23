@@ -411,12 +411,19 @@ class DbSync:
 
                     qid = cur.sfqid
 
+                    # rowcount is -1 when the row count is unknown
+                    rowcount = cur.rowcount
+                    rowcount_unknown = rowcount < 0
+
                     # Raise exception if returned rows greater than max allowed records
-                    if 0 < max_records < cur.rowcount:
+                    if 0 < max_records < rowcount:
                         raise TooManyRecordsException(
                             f"Query returned too many records. This query can return max {max_records} records")
 
                     result = cur.fetchall()
+                    if rowcount_unknown and 0 < max_records < len(result):
+                        raise TooManyRecordsException(
+                            f"Query returned too many records. This query can return max {max_records} records")
 
         return result
 
