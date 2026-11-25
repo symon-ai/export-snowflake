@@ -404,17 +404,15 @@ class DbSync:
 
                     qid = cur.sfqid
 
-                    # rowcount is -1 when the row count is unknown, sometimes None need to handle both
+                    # rowcount is -1 when the row count is unknown; connector 5.x may return None instead
                     rowcount = cur.rowcount if cur.rowcount is not None else -1
-                    if rowcount == -1:
-                        raise SymonException("Snowflake encountered an error while transferring data. Check that your Snowflake table isn't too large.", 'snowflake.clientError')
 
                     # Raise exception if returned rows greater than max allowed records
                     if 0 < max_records < rowcount:
                         raise TooManyRecordsException(
                             f"Query returned too many records. This query can return max {max_records} records")
 
-                    if rowcount > 0:
+                    if rowcount != 0:
                         result = cur.fetchall()
 
         return result
