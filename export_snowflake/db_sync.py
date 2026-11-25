@@ -18,13 +18,6 @@ from export_snowflake.upload_clients.s3_upload_client import S3UploadClient
 from export_snowflake.upload_clients.snowflake_upload_client import SnowflakeUploadClient
 
 
-def is_invalid_account_error(error: Exception) -> bool:
-    """Check if a connection error is caused by an invalid Snowflake account name"""
-    message = str(error)
-    return ('Verify the account name is correct' in message
-            or ('Failed to login' in message and '404 Not Found' in message))
-
-
 def validate_config(config):
     """Validate configuration"""
     errors = []
@@ -365,7 +358,7 @@ class DbSync:
         except snowflake.connector.errors.DatabaseError as e:
             if 'Incorrect username or password was specified' in str(e):
                 raise SymonException("The username or password provided is incorrect. Please check and try again.", "snowflake.clientError")
-            if is_invalid_account_error(e):
+            if 'Verify the account name is correct' in str(e):
                 raise SymonException("Sorry, we couldn't connect to the database. Please check the Snowflake URL and try again.", "snowflake.clientError")
             raise
 
@@ -411,21 +404,17 @@ class DbSync:
 
                     qid = cur.sfqid
 
-                    # rowcount is -1 when the row count is unknown
+                    # rowcount is -1 when the row count is unknown, sometimes None need to handle both
                     rowcount = cur.rowcount if cur.rowcount is not None else -1
-                    rowcount_unknown = rowcount < 0
+                    if rowcount == -1:
+                        raise SymonException("Snowflake encountered an error while transferring data. Check that your Snowflake table isn't too large.", 'snowflake.clientError')
 
                     # Raise exception if returned rows greater than max allowed records
                     if 0 < max_records < rowcount:
                         raise TooManyRecordsException(
                             f"Query returned too many records. This query can return max {max_records} records")
 
-                    if rowcount_unknown and max_records > 0:
-                        result = cur.fetchmany(max_records + 1)
-                        if len(result) > max_records:
-                            raise TooManyRecordsException(
-                                f"Query returned too many records. This query can return max {max_records} records")
-                    else:
+                    if rowcount > 0:
                         result = cur.fetchall()
 
         return result
