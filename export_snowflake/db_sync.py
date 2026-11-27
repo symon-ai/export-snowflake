@@ -358,9 +358,7 @@ class DbSync:
         except snowflake.connector.errors.DatabaseError as e:
             if 'Incorrect username or password was specified' in str(e):
                 raise SymonException("The username or password provided is incorrect. Please check and try again.", "snowflake.clientError")
-            raise
-        except snowflake.connector.errors.ForbiddenError as e:
-            if 'Failed to connect to DB. Verify the account name is correct' in str(e):
+            if 'Verify the account name is correct' in str(e):
                 raise SymonException("Sorry, we couldn't connect to the database. Please check the Snowflake URL and try again.", "snowflake.clientError")
             raise
 
@@ -406,12 +404,16 @@ class DbSync:
 
                     qid = cur.sfqid
 
+                    # rowcount is -1 when the row count is unknown; connector 5.x may return None instead
+                    rowcount = cur.rowcount if cur.rowcount is not None else -1
+
                     # Raise exception if returned rows greater than max allowed records
-                    if 0 < max_records < cur.rowcount:
+                    if 0 < max_records < rowcount:
                         raise TooManyRecordsException(
                             f"Query returned too many records. This query can return max {max_records} records")
 
-                    result = cur.fetchall()
+                    if rowcount != 0:
+                        result = cur.fetchall()
 
         return result
 
